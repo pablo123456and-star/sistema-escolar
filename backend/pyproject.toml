@@ -1,0 +1,11 @@
+[project]
+name = "escuela-backend"
+version = "0.1.0"
+description = "API del Sistema de Información - Unidad Educativa (FastAPI)"
+# Versión de Python OBLIGATORIA para todo el equipo
+requires-python = ">=3.14,<3.15"
+# Las dependencias y sus versiones exactas están en requirements.txt / requirements.lock
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

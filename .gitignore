@@ -1,0 +1,18 @@
+# Variables de entorno (contraseñas y claves): NUNCA se suben
+.env
+.env.*
+!.env.example
+
+# Archivos temporales de Word / Office (se crean mientras el documento está abierto)
+~$*
+
+# Sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editores
+.vscode/
+.idea/
+
+# (backend/ y frontend/ tienen además su propio .gitignore: .venv, node_modules, dist…)

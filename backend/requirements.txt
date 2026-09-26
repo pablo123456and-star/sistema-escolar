@@ -1,0 +1,11 @@
+# Dependencias de la API (versiones EXACTAS, obligatorias para todo el equipo).
+# No cambiar una versión sin acordarlo con el grupo.
+# Para instalar se usa requirements.lock (incluye todas las dependencias internas).
+fastapi==0.141.1
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+sqlalchemy[asyncio]==2.1.1
+asyncpg==0.31.0
+pyjwt[crypto]==2.15.0
+bcrypt==5.0.0
