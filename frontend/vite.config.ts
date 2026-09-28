@@ -18,5 +18,7 @@ export default defineConfig({
     },
   },
   server: { proxy: proxyApi },
-  preview: { proxy: proxyApi },
+  // "npm run preview" sirve la versión compilada y puede publicarse con un túnel
+  // (playit.gg, ngrok...): se acepta cualquier nombre de dominio del túnel.
+  preview: { proxy: proxyApi, allowedHosts: true },
 })
