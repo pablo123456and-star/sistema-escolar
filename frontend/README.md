@@ -2,7 +2,19 @@
 
 Aplicación web en React + TypeScript que usan administrativos, docentes, estudiantes y tutores. **Solo habla con el backend FastAPI**: el inicio de sesión y todos los datos pasan por la API; nunca se conecta a la base de datos.
 
-> **Estado:** estructura base. La página de inicio muestra los 6 paquetes y cada uno de los 27 casos de uso abre una pantalla "pendiente de implementar".
+> **Estado:** Ciclo 1 implementado, con el diseño del prototipo del documento:
+>
+> | Pantalla | Ruta | Caso de uso |
+> |---|---|---|
+> | Iniciar sesión / Recuperar contraseña | `/login`, `/recuperar-contrasena` | CU01 |
+> | Inicio (panel) y "Mi perfil" (cambiar contraseña, cerrar sesión) | `/` y menú del usuario | CU01 |
+> | Gestión de usuarios | `/seguridad/usuarios` | CU02 |
+> | Roles y permisos | `/seguridad/roles` | CU03 |
+> | Bitácora | `/seguridad/bitacora` | CU04 |
+> | Gestión de estudiantes | `/personas/estudiantes` | CU06 |
+> | Padres y tutores (asociar estudiantes) | `/personas/tutores` | CU08 |
+>
+> Los demás casos de uso siguen como pantallas "pendiente de implementar" (`/paquete/cuXX`).
 
 ---
 

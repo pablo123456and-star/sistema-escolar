@@ -1,4 +1,7 @@
-/** Los 6 paquetes del sistema y sus casos de uso (mismo orden que el backend). */
+/**
+ * Los 6 paquetes del sistema y sus casos de uso (mismo orden que el backend).
+ * Ciclo 1 implementado: CU01-CU04 (seguridad), CU06 y CU08 (personas).
+ */
 export type CasoUso = { codigo: string; nombre: string; ruta: string }
 export type Paquete = { paquete: string; titulo: string; casos: CasoUso[] }
 
@@ -7,10 +10,10 @@ export const PAQUETES: Paquete[] = [
     paquete: 'seguridad',
     titulo: 'Seguridad: acceso y auditoría',
     casos: [
-      { codigo: 'CU01', nombre: 'Iniciar sesión (autenticación)', ruta: '/seguridad/cu01' },
-      { codigo: 'CU02', nombre: 'Gestionar usuarios (CRUD)', ruta: '/seguridad/cu02' },
-      { codigo: 'CU03', nombre: 'Gestionar roles y permisos', ruta: '/seguridad/cu03' },
-      { codigo: 'CU04', nombre: 'Consultar bitácora de actividades', ruta: '/seguridad/cu04' },
+      { codigo: 'CU01', nombre: 'Iniciar sesión (incluye recuperar contraseña)', ruta: '/login' },
+      { codigo: 'CU02', nombre: 'Gestionar usuarios (CRUD)', ruta: '/seguridad/usuarios' },
+      { codigo: 'CU03', nombre: 'Gestionar roles y permisos', ruta: '/seguridad/roles' },
+      { codigo: 'CU04', nombre: 'Consultar bitácora de actividades', ruta: '/seguridad/bitacora' },
     ],
   },
   {
@@ -18,9 +21,9 @@ export const PAQUETES: Paquete[] = [
     titulo: 'Personas: estudiantes, tutores, docentes y administrativos',
     casos: [
       { codigo: 'CU05', nombre: 'Registrar y actualizar datos de persona', ruta: '/personas/cu05' },
-      { codigo: 'CU06', nombre: 'Registrar y gestionar estudiante', ruta: '/personas/cu06' },
+      { codigo: 'CU06', nombre: 'Registrar y gestionar estudiante', ruta: '/personas/estudiantes' },
       { codigo: 'CU07', nombre: 'Registrar antecedentes médicos y seguimiento del estudiante', ruta: '/personas/cu07' },
-      { codigo: 'CU08', nombre: 'Registrar tutor y asociarlo a estudiante', ruta: '/personas/cu08' },
+      { codigo: 'CU08', nombre: 'Registrar tutor y asociarlo a estudiante', ruta: '/personas/tutores' },
       { codigo: 'CU09', nombre: 'Consultar estudiantes/tutores relacionados', ruta: '/personas/cu09' },
       { codigo: 'CU10', nombre: 'Registrar docente', ruta: '/personas/cu10' },
       { codigo: 'CU11', nombre: 'Registrar personal administrativo', ruta: '/personas/cu11' },

@@ -41,6 +41,8 @@ Las versiones exactas de cada librería están fijadas en `backend/requirements.
 
 El backend y el frontend se organizan igual: **6 paquetes**, cada uno con sus archivos compartidos y un archivo por caso de uso en `casos_uso/`.
 
+**Implementado (Ciclo 1):** CU01, CU02, CU03, CU04 (seguridad), CU06 y CU08 (personas). El resto está pendiente.
+
 | Paquete | Casos de uso |
 |---|---|
 | `seguridad` | CU01 Iniciar sesión · CU02 Gestionar usuarios · CU03 Gestionar roles y permisos · CU04 Consultar bitácora |

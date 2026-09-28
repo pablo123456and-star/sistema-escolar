@@ -2,7 +2,7 @@
 
 API en Python que usa el frontend. **Aquí está la lógica de negocio del sistema**: login, permisos por rol, validaciones y altas/bajas/modificaciones. La base de datos (`basededato/sql/`) guarda los datos y sus relaciones, con unos pocos triggers y procedimientos.
 
-> **Estado:** estructura base. Solo funciona `GET /api/v1/salud`; los 27 casos de uso están creados como archivos pendientes de implementar.
+> **Estado:** Ciclo 1 implementado — **seguridad** (CU01 iniciar sesión y recuperar contraseña, CU02 usuarios, CU03 roles y permisos, CU04 bitácora) y **personas** (CU06 estudiantes, CU08 tutores y vínculos). Los demás casos de uso siguen pendientes (su archivo explica las reglas que deben cumplir).
 
 ---
 
@@ -118,11 +118,34 @@ uvicorn app.main:app --reload
 
 `--reload` reinicia el servidor solo cada vez que guardas un archivo. Para detenerlo: `Ctrl + C`.
 
+Si falta `DATABASE_URL` o `JWT_SECRETO` en el `.env`, el servidor no arranca y dice qué variable falta.
+
 ### Paso 6 — Ejecutar las pruebas
 
 ```bash
 pytest
 ```
+
+Sin más configuración solo corre la prueba de humo (`/salud`). Las pruebas de los casos de uso
+necesitan una base **de pruebas** creada con los scripts 01 a 08 (ver `basededato/sql/LEEME.md`).
+Cada prueba corre en una transacción que se deshace al final: la base no cambia.
+
+```powershell
+# PowerShell (cambia usuario, contraseña, puerto y nombre de la base por los tuyos)
+$env:TEST_DATABASE_URL = "postgresql+asyncpg://postgres:TU_CONTRASENA@localhost:5432/escuela_prueba"
+pytest
+```
+
+```bash
+# Linux / macOS
+TEST_DATABASE_URL="postgresql+asyncpg://postgres:TU_CONTRASENA@localhost:5432/escuela_prueba" pytest
+```
+
+### Usuarios de prueba
+
+`08_datos_prueba.sql` crea 6 usuarios (todos con la misma contraseña, indicada al final de ese archivo):
+`direccion` y `secretaria` (administrador), `rflores` y `erojas` (docente), `mquispe` (estudiante) y `marioq` (tutor).
+También se puede iniciar sesión con el correo de la persona (por ejemplo, el de `direccion`).
 
 ---
 
