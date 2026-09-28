@@ -15,4 +15,7 @@ desktop.ini
 .vscode/
 .idea/
 
+# Notas locales de desarrollo (no se publican)
+CLAUDE.md
+
 # (backend/ y frontend/ tienen además su propio .gitignore: .venv, node_modules, dist…)
