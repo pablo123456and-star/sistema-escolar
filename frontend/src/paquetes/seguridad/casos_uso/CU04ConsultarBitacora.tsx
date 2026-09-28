@@ -16,7 +16,8 @@
  * Estado: IMPLEMENTADO.
  */
 import { useState } from 'react'
-import { EyeIcon, RotateCcwIcon, SearchIcon } from 'lucide-react'
+import { cn } from 'cn'
+import { ChevronDownIcon, EyeIcon, RotateCcwIcon, SearchIcon, SlidersHorizontalIcon } from 'lucide-react'
 import {
   BotonAccion,
   Campo,
@@ -50,6 +51,7 @@ const FILTROS_VACIOS = { desde: '', hasta: '', modulo: TODOS, tabla: TODOS, oper
 export default function CU04ConsultarBitacora() {
   const [f, setF] = useState(FILTROS_VACIOS)
   const [pagina, setPagina] = useState(1)
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false)
   const [detalle, setDetalle] = useState<RegistroBitacora | null>(null)
   const opciones = useOpcionesBitacora()
   const usuario = useRetardo(f.usuario)
@@ -92,7 +94,24 @@ export default function CU04ConsultarBitacora() {
       />
 
       <div className="rounded-xl border bg-white shadow-sm">
-        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 xl:items-end">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between p-4 sm:hidden"
+          onClick={() => setFiltrosAbiertos((v) => !v)}
+          aria-expanded={filtrosAbiertos}
+        >
+          <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <SlidersHorizontalIcon className="size-4" /> Filtros
+          </span>
+          <ChevronDownIcon className={cn('size-4 text-slate-500 transition-transform', filtrosAbiertos && 'rotate-180')} />
+        </button>
+
+        <div
+          className={cn(
+            'gap-3 p-4 pt-0 sm:grid sm:grid-cols-2 sm:pt-4 lg:grid-cols-4 xl:grid-cols-8 xl:items-end',
+            filtrosAbiertos ? 'grid' : 'hidden',
+          )}
+        >
           <Campo etiqueta="Desde">
             <Input type="date" value={f.desde} onChange={(e) => cambiar('desde', e.target.value)} />
           </Campo>
