@@ -46,6 +46,11 @@ export function iniciales(nombre: string): string {
     .join('')
 }
 
+/** "Bs 1.550" */
+export function bolivianos(monto: number): string {
+  return `Bs ${monto.toLocaleString('es-BO')}`
+}
+
 /** "1234567 SC" */
 export function documento(ci: string, expedido?: string | null): string {
   return expedido ? `${ci} ${expedido}` : ci

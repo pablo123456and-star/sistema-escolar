@@ -77,6 +77,9 @@ const COLOR_ESTADO: Record<string, string> = {
   activa: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   retirada: 'bg-rose-50 text-rose-700 ring-rose-200',
   finalizada: 'bg-slate-100 text-slate-700 ring-slate-200',
+  pagada: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  pendiente: 'bg-amber-50 text-amber-700 ring-amber-200',
+  vencida: 'bg-rose-50 text-rose-700 ring-rose-200',
 }
 
 export function InsigniaEstado({ estado }: { estado: string }) {

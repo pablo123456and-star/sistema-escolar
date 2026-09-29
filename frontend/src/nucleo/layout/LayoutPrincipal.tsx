@@ -1,23 +1,33 @@
 /**
  * Estructura de todas las pantallas (como el prototipo): menú lateral azul con el
  * escudo, encabezado con el nombre de la unidad educativa, avisos y el menú del usuario
- * (Mi perfil, Cerrar sesión con confirmación). El menú se filtra por rol.
+ * (Mi perfil, Cerrar sesión con confirmación). El menú se filtra por rol: el
+ * administrador ve los módulos de gestión; docente, estudiante y padre/tutor, sus consultas.
  */
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { cn } from 'cn'
 import {
   BellIcon,
+  CalendarCheckIcon,
+  CalendarDaysIcon,
   ChevronDownIcon,
+  ClipboardCheckIcon,
+  FileTextIcon,
   GraduationCapIcon,
+  HeartPulseIcon,
+  HistoryIcon,
   HouseIcon,
   LogOutIcon,
+  MegaphoneIcon,
   MenuIcon,
+  NotebookPenIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
   UserIcon,
   UsersIcon,
   UsersRoundIcon,
+  WalletIcon,
   XIcon,
   type LucideIcon,
 } from 'lucide-react'
@@ -40,6 +50,8 @@ import type { Rol } from '@/paquetes/seguridad/schemas'
 
 type ItemMenu = { ruta: string; texto: string; icono: LucideIcon; roles?: Rol[] }
 
+// Opciones por rol según la matriz de permisos del CU03 (una misma ruta puede tener
+// otro texto según el rol, pero cada rol la ve una sola vez).
 const MENU: ItemMenu[] = [
   { ruta: '/', texto: 'Inicio', icono: HouseIcon },
   { ruta: '/seguridad/usuarios', texto: 'Usuarios', icono: UsersIcon, roles: ['administrador'] },
@@ -47,6 +59,27 @@ const MENU: ItemMenu[] = [
   { ruta: '/seguridad/bitacora', texto: 'Bitácora', icono: ScrollTextIcon, roles: ['administrador'] },
   { ruta: '/personas/estudiantes', texto: 'Estudiantes', icono: GraduationCapIcon, roles: ['administrador'] },
   { ruta: '/personas/tutores', texto: 'Padres y tutores', icono: UsersRoundIcon, roles: ['administrador'] },
+  // Docente
+  { ruta: '/horarios/cu20', texto: 'Mis horarios', icono: CalendarDaysIcon, roles: ['profesor'] },
+  { ruta: '/evaluacion/cu21', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['profesor'] },
+  { ruta: '/evaluacion/cu23', texto: 'Calificaciones', icono: NotebookPenIcon, roles: ['profesor'] },
+  { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: GraduationCapIcon, roles: ['profesor'] },
+  { ruta: '/personas/cu07', texto: 'Seguimiento', icono: HeartPulseIcon, roles: ['profesor'] },
+  // Estudiante
+  { ruta: '/horarios/cu20', texto: 'Mi horario', icono: CalendarDaysIcon, roles: ['estudiante'] },
+  { ruta: '/evaluacion/cu23', texto: 'Mis calificaciones', icono: NotebookPenIcon, roles: ['estudiante'] },
+  { ruta: '/evaluacion/cu24', texto: 'Boletín', icono: FileTextIcon, roles: ['estudiante'] },
+  { ruta: '/evaluacion/cu22', texto: 'Mi asistencia', icono: CalendarCheckIcon, roles: ['estudiante'] },
+  { ruta: '/academico/cu17', texto: 'Mis inscripciones', icono: HistoryIcon, roles: ['estudiante'] },
+  // Padre/Tutor
+  { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: UsersRoundIcon, roles: ['tutor'] },
+  { ruta: '/horarios/cu20', texto: 'Horarios', icono: CalendarDaysIcon, roles: ['tutor'] },
+  { ruta: '/evaluacion/cu24', texto: 'Boletín', icono: FileTextIcon, roles: ['tutor'] },
+  { ruta: '/evaluacion/cu22', texto: 'Asistencia', icono: CalendarCheckIcon, roles: ['tutor'] },
+  { ruta: '/academico/cu17', texto: 'Inscripciones', icono: HistoryIcon, roles: ['tutor'] },
+  // Comunes a varios roles
+  { ruta: '/administracion/cu25', texto: 'Pagos', icono: WalletIcon, roles: ['estudiante', 'tutor'] },
+  { ruta: '/administracion/cu27', texto: 'Comunicados', icono: MegaphoneIcon, roles: ['profesor', 'estudiante', 'tutor'] },
 ]
 
 function NombreInstitucion({ claro }: { claro?: boolean }) {

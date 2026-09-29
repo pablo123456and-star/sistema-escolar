@@ -15,9 +15,6 @@ desktop.ini
 .vscode/
 .idea/
 
-# Notas locales de desarrollo (no se publican)
-CLAUDE.md
-
 # Herramienta de túnel para exponer el sitio en desarrollo
 ngrok.exe
 
