@@ -15,8 +15,8 @@ const soloAdministrador = (elemento: ReactNode) => para(['administrador'], eleme
 
 export const rutasAcademico: RouteObject[] = [
   { path: 'academico/cu12', element: soloAdministrador(<CU12GestionarNivelesCursos />) },
-  { path: 'academico/cu13', element: soloAdministrador(<CU13GestionarMaterias />) },
-  { path: 'academico/cu14', element: soloAdministrador(<CU14AsignarProfesor />) },
+  { path: 'academico/materias', element: soloAdministrador(<CU13GestionarMaterias />) },
+  { path: 'academico/asignaciones', element: soloAdministrador(<CU14AsignarProfesor />) },
   { path: 'academico/cu15', element: soloAdministrador(<CU15GestionarGestionAcademica />) },
   { path: 'academico/cu16', element: soloAdministrador(<CU16InscribirEstudiante />) },
   { path: 'academico/cu17', element: para(['administrador', 'estudiante', 'tutor'], <CU17ConsultarHistorialInscripciones />) },

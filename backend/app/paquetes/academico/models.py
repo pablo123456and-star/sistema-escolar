@@ -50,3 +50,65 @@ class Inscripcion(Base):
     id_curso_inscripcion: Mapped[int] = mapped_column(ForeignKey("curso.id_curso"))
     creado_en: Mapped[datetime] = mapped_column(server_default="now()")
     actualizado_en: Mapped[datetime] = mapped_column(server_default="now()")
+
+
+# ============================================================
+# CU13 - GESTIONAR MATERIAS Y PLAN DE ESTUDIOS
+# ============================================================
+
+from sqlalchemy import SmallInteger
+
+
+# Modelo de niveles educativos
+class NivelEducativo(Base):
+    __tablename__ = "nivel_educativo"
+
+    id_nivel: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre_nivel: Mapped[str] = mapped_column(String(50), nullable=False)
+
+
+# Modelo de grados
+class Grado(Base):
+    __tablename__ = "grado"
+
+    id_grado: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre_grado: Mapped[str] = mapped_column(String(50), nullable=False)
+    orden_grado: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    id_nivel_educativo_grado: Mapped[int] = mapped_column(ForeignKey("nivel_educativo.id_nivel"), nullable=False)
+
+
+# Modelo de materias
+class Materia(Base):
+    __tablename__ = "materia"
+
+    id_materia: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre_materia: Mapped[str] = mapped_column(String(100), nullable=False)
+    carga_horaria: Mapped[int | None] = mapped_column(Integer)
+
+
+# Modelo del plan de estudios
+class MateriaGrado(Base):
+    __tablename__ = "materia_grado"
+
+    id_grado_mg: Mapped[int] = mapped_column(ForeignKey("grado.id_grado", ondelete="CASCADE"), primary_key=True)
+    id_materia_mg: Mapped[int] = mapped_column(ForeignKey("materia.id_materia", ondelete="CASCADE"), primary_key=True)
+
+# ============================================================
+# CU14 - ASIGNAR PROFESOR A MATERIA/CURSO
+# ============================================================
+
+from sqlalchemy import DateTime, func
+
+
+class AsignacionProfesorClase(Base):
+    """Representa la asignación de un profesor a una materia y curso."""
+
+    __tablename__ = "asignacion_profesor_clase"
+
+    id_asignacion: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ci_profesor_asignacion: Mapped[str] = mapped_column(ForeignKey("profesor.ci_profesor", onupdate="CASCADE"), nullable=False)
+    id_materia_asignacion: Mapped[int] = mapped_column(ForeignKey("materia.id_materia"), nullable=False)
+    id_curso_asignacion: Mapped[int] = mapped_column(ForeignKey("curso.id_curso"), nullable=False)
+    id_aula_asignacion: Mapped[int] = mapped_column(Integer, nullable=False)
+    id_gestion_asignacion: Mapped[int] = mapped_column(ForeignKey("gestion.id_gestion"), nullable=False)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

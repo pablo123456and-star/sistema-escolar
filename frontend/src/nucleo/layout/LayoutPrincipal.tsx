@@ -59,6 +59,10 @@ const MENU: ItemMenu[] = [
   { ruta: '/seguridad/bitacora', texto: 'Bitácora', icono: ScrollTextIcon, roles: ['administrador'] },
   { ruta: '/personas/estudiantes', texto: 'Estudiantes', icono: GraduationCapIcon, roles: ['administrador'] },
   { ruta: '/personas/tutores', texto: 'Padres y tutores', icono: UsersRoundIcon, roles: ['administrador'] },
+  // CU13 - Gestionar materias y plan de estudios
+  { ruta: '/academico/materias', texto: 'Materias y plan de estudios', icono: NotebookPenIcon, roles: ['administrador'] },
+  // CU14 - Asignar profesor a materia/curso
+  { ruta: '/academico/asignaciones', texto: 'Asignación de profesores', icono: UsersIcon, roles: ['administrador'] },
   // Docente
   { ruta: '/horarios/cu20', texto: 'Mis horarios', icono: CalendarDaysIcon, roles: ['profesor'] },
   { ruta: '/evaluacion/cu21', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['profesor'] },
