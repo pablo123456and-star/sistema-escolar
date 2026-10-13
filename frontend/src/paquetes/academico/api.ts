@@ -31,6 +31,10 @@ import type {
   DatosAsignacionActualizar,
   OpcionesAsignacion,
   MateriasCursoAsignacion,
+  //CU16 - Inscribir estudiante
+  Boleta,
+  DatosInscripcion,
+  EstudianteInscripcion,
 } from './schemas'
 
 
@@ -390,5 +394,37 @@ export function useEliminarAsignacion() {
       ),
 
     onSuccess: invalidar,
+  })
+}
+
+
+// ============================================================
+// CU16 - INSCRIBIR ESTUDIANTE EN GESTIÓN ACADÉMICA
+// ============================================================
+
+export type FiltrosEstudiantesInscripcion = { q?: string; pagina: number; tamano: number }
+
+export function useEstudiantesInscripcion(f: FiltrosEstudiantesInscripcion) {
+  return useQuery({
+    queryKey: ['academico', 'inscripciones-estudiantes', f],
+    queryFn: () => api<Pagina<EstudianteInscripcion>>(`${RUTA_ACADEMICO}/inscripciones/estudiantes`, { params: f }),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useBoleta(id_inscripcion: number | null) {
+  return useQuery({
+    queryKey: ['academico', 'boleta', id_inscripcion],
+    queryFn: () => api<Boleta>(`${RUTA_ACADEMICO}/inscripciones/${id_inscripcion}/boleta`),
+    enabled: id_inscripcion !== null,
+  })
+}
+
+export function useInscribir() {
+  const cliente = useQueryClient()
+  return useMutation({
+    mutationFn: (datos: DatosInscripcion) => api<Boleta>(`${RUTA_ACADEMICO}/inscripciones`, { metodo: 'POST', cuerpo: datos }),
+    // También cambia el cupo de los cursos y la inscripción que muestra el CU06 (paquete personas)
+    onSuccess: () => cliente.invalidateQueries({ predicate: (q) => ['academico', 'personas'].includes(String(q.queryKey[0])) }),
   })
 }

@@ -364,3 +364,30 @@ async def eliminar_asignacion(
         sesion,
         id_asignacion,
     )
+
+# ============================================================
+# CU16 - INSCRIBIR ESTUDIANTE EN GESTIÓN ACADÉMICA
+# ============================================================
+
+from app.paquetes.academico.casos_uso import cu16_inscribir_estudiante as cu16
+from app.paquetes.academico.schemas import BoletaSalida, EstudianteInscripcionSalida, InscripcionCrear
+
+
+@router.get("/inscripciones/estudiantes", response_model=Pagina[EstudianteInscripcionSalida],
+            summary="CU16 - Buscar estudiante (CI, RUDE o nombre)")
+async def buscar_estudiantes_inscripcion(
+    _: Administrador, sesion: Sesion, q: str | None = None, pagina: NumeroPagina = 1, tamano: TamanoPagina = 10,
+):
+    return await cu16.buscar_estudiantes(sesion, q=q, pagina=pagina, tamano=tamano)
+
+
+@router.post("/inscripciones", response_model=BoletaSalida, status_code=status.HTTP_201_CREATED,
+             summary="CU16 - Inscribir estudiante en la gestión abierta")
+async def inscribir_estudiante(datos: InscripcionCrear, _: Administrador, sesion: Sesion):
+    return await cu16.inscribir(sesion, datos)
+
+
+@router.get("/inscripciones/{id_inscripcion}/boleta", response_model=BoletaSalida,
+            summary="CU16 - Emitir boleta de inscripción")
+async def boleta_inscripcion(_: Administrador, sesion: Sesion, id_inscripcion: int):
+    return await cu16.emitir_boleta(sesion, id_inscripcion)

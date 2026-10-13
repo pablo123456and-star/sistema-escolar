@@ -141,7 +141,7 @@ export default function LayoutPrincipal() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Menú lateral (escritorio) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-[#0B2352] lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-[#0B2352] lg:flex print:hidden">
         <Link to="/" className="flex flex-col items-center gap-2 border-b border-white/10 px-4 py-5 text-center">
           <Escudo className="h-16 w-auto" />
           <NombreInstitucion claro />
@@ -168,8 +168,8 @@ export default function LayoutPrincipal() {
         </div>
       )}
 
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-white px-4 sm:px-6">
+      <div className="lg:pl-64 print:pl-0">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-white px-4 sm:px-6 print:hidden">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMenuMovil(true)} aria-label="Abrir menú">
             <MenuIcon />
           </Button>
@@ -236,7 +236,7 @@ export default function LayoutPrincipal() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl p-4 sm:p-6">
+        <main className="mx-auto max-w-7xl p-4 sm:p-6 print:p-0">
           <Outlet />
         </main>
       </div>

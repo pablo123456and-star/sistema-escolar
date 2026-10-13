@@ -240,3 +240,56 @@ export type Asignacion = {
   id_aula_asignacion: number
   id_gestion_asignacion: number
 }
+
+// ============================================================
+// CU16 - INSCRIBIR ESTUDIANTE EN GESTIÓN ACADÉMICA
+// ============================================================
+
+export type EstudianteInscripcion = {
+  ci: string
+  expedido: string | null
+  nombre_persona: string
+  apellidos: string
+  rude: string | null
+  estado_persona: 'activo' | 'inactivo'
+  id_inscripcion: number | null
+  estado_inscripcion: 'activa' | 'retirada' | 'finalizada' | null
+  curso: string | null
+}
+
+export type DatosInscripcion = { ci_estudiante: string; id_curso: number }
+
+export type MateriaBoleta = {
+  materia: string
+  carga_horaria: number | null
+  docente: string | null
+  aula: string | null
+}
+
+export type BloqueBoleta = {
+  dia: string
+  hora_inicio: string
+  hora_final: string
+  materia: string
+  docente: string
+  aula: string
+}
+
+export type Boleta = {
+  id_inscripcion: number
+  fecha_inscripcion: string
+  estado_inscripcion: string
+  ci: string
+  expedido: string | null
+  nombre_persona: string
+  apellidos: string
+  fecha_nacimiento: string | null
+  rude: string | null
+  gestion: number
+  curso: string
+  grado: string
+  paralelo: string
+  nivel: string
+  materias: MateriaBoleta[]
+  horario: BloqueBoleta[]
+}

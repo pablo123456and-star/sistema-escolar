@@ -289,3 +289,70 @@ class AsignacionSalida(BaseModel):
     id_aula_asignacion: int
 
     id_gestion_asignacion: int
+
+# ============================================================
+# CU16 - INSCRIBIR ESTUDIANTE EN GESTIÓN ACADÉMICA
+# ============================================================
+
+from datetime import date, time
+
+
+class EstudianteInscripcionSalida(BaseModel):
+    """Estudiante encontrado, con su inscripción en la gestión abierta (si tiene)."""
+
+    ci: str
+    expedido: str | None
+    nombre_persona: str
+    apellidos: str
+    rude: str | None
+    estado_persona: str
+    id_inscripcion: int | None
+    estado_inscripcion: str | None
+    curso: str | None
+
+
+class InscripcionCrear(BaseModel):
+    ci_estudiante: str = Field(min_length=1, max_length=20)
+    id_curso: int = Field(gt=0)
+
+    @field_validator("ci_estudiante", mode="before")
+    @classmethod
+    def limpiar_ci(cls, valor):
+        return valor.strip() if isinstance(valor, str) else valor
+
+
+class MateriaBoletaSalida(BaseModel):
+    materia: str
+    carga_horaria: int | None
+    docente: str | None
+    aula: str | None
+
+
+class BloqueBoletaSalida(BaseModel):
+    dia: str
+    hora_inicio: time
+    hora_final: time
+    materia: str
+    docente: str
+    aula: str
+
+
+class BoletaSalida(BaseModel):
+    """Boleta de inscripción: estudiante, gestión, curso, materias y horario semanal."""
+
+    id_inscripcion: int
+    fecha_inscripcion: date
+    estado_inscripcion: str
+    ci: str
+    expedido: str | None
+    nombre_persona: str
+    apellidos: str
+    fecha_nacimiento: date | None
+    rude: str | None
+    gestion: int
+    curso: str
+    grado: str
+    paralelo: str
+    nivel: str
+    materias: list[MateriaBoletaSalida]
+    horario: list[BloqueBoletaSalida]
