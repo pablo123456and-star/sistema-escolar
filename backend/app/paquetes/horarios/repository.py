@@ -3,13 +3,8 @@ Acceso a la base de datos del paquete horarios (compartido).
 
 Consultas y escrituras con SQLAlchemy sobre las tablas de models.py.
 Los procedimientos almacenados se ejecutan con CALL (ver basededato/sql/04).
-
-PENDIENTE.
 """
-"""
-Acceso a la base de datos del paquete horarios (compartido).
-"""
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.paquetes.horarios.models import Horario

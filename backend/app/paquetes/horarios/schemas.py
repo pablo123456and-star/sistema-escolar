@@ -1,8 +1,5 @@
 """
 DTO de entrada y salida (Pydantic) del paquete horarios (compartido).
-
-"""
-DTO de entrada y salida (Pydantic) del paquete horarios (compartido).
 """
 from datetime import time
 from typing import Literal

@@ -3,12 +3,6 @@ Modelos SQLAlchemy (ORM) del paquete horarios (compartido).
 
 Tablas (lectura y escritura): aula, horario.
 Vistas (solo lectura): v_horario.
-
-"""
-Modelos SQLAlchemy (ORM) del paquete horarios (compartido).
-
-Tablas (lectura y escritura): aula, horario, asignacion_profesor_clase.
-Vistas (solo lectura): v_horario.
 """
 from datetime import time
 
