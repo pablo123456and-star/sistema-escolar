@@ -18,6 +18,6 @@ export const rutasAcademico: RouteObject[] = [
   { path: 'academico/materias', element: soloAdministrador(<CU13GestionarMaterias />) },
   { path: 'academico/asignaciones', element: soloAdministrador(<CU14AsignarProfesor />) },
   { path: 'academico/cu15', element: soloAdministrador(<CU15GestionarGestionAcademica />) },
-  { path: 'academico/cu16', element: soloAdministrador(<CU16InscribirEstudiante />) },
+  { path: 'academico/inscripciones', element: soloAdministrador(<CU16InscribirEstudiante />) },
   { path: 'academico/cu17', element: para(['administrador', 'estudiante', 'tutor'], <CU17ConsultarHistorialInscripciones />) },
 ]
