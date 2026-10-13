@@ -27,6 +27,7 @@ import {
   ScrollTextIcon,
   ShieldCheckIcon,
   UserIcon,
+  UserPlusIcon,
   UsersIcon,
   UsersRoundIcon,
   WalletIcon,
@@ -67,6 +68,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/academico/materias', texto: 'Materias y plan de estudios', icono: NotebookPenIcon, roles: ['administrador'] },
   // CU14 - Asignar profesor a materia/curso
   { ruta: '/academico/asignaciones', texto: 'Asignación de profesores', icono: UsersIcon, roles: ['administrador'] },
+  // CU16 - Inscribir estudiante en gestión académica
+  { ruta: '/academico/inscripciones', texto: 'Inscripciones', icono: UserPlusIcon, roles: ['administrador'] },
   // CU19 - Generar horario y CU20 - Consultar horarios
   { ruta: '/horarios/generar', texto: 'Generar horario', icono: CalendarCogIcon, roles: ['administrador'] },
   { ruta: '/horarios/consulta', texto: 'Consultar horarios', icono: CalendarDaysIcon, roles: ['administrador'] },
