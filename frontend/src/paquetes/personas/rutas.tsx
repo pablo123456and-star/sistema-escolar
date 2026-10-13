@@ -20,6 +20,6 @@ export const rutasPersonas: RouteObject[] = [
   { path: 'personas/cu07', element: para(['administrador', 'profesor'], <CU07RegistrarAntecedentesSeguimiento />) },
   { path: 'personas/tutores', element: soloAdministrador(<CU08RegistrarAsociarTutor />) },
   { path: 'personas/cu09', element: <CU09ConsultarRelacionados /> },
-  { path: 'personas/cu10', element: soloAdministrador(<CU10RegistrarDocente />) },
+  { path: 'personas/docentes', element: soloAdministrador(<CU10RegistrarDocente />) },
   { path: 'personas/cu11', element: soloAdministrador(<CU11RegistrarAdministrativo />) },
 ]

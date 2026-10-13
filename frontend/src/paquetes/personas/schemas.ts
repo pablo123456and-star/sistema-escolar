@@ -187,3 +187,41 @@ export function personaAFormulario(p: Persona): DatosPersona {
     email: p.email ?? '',
   }
 }
+
+// ---- CU10 -------------------------------------------------------------------
+export type Docente = {
+  ci: string
+  expedido: string | null
+  nombre_persona: string
+  apellidos: string
+  sexo: 'M' | 'F' | null
+  telefono: string | null
+  email: string | null
+  titulo_academico: string | null
+  anios_experiencia: number | null
+  estado_persona: 'activo' | 'inactivo'
+  cantidad_asignaciones: number
+}
+
+export type AsignacionDocente = { id_asignacion: number; materia: string; curso: string; aula: string }
+
+export type DocenteDetalle = Persona & {
+  titulo_academico: string | null
+  fecha_contrato: string | null
+  antecedentes_laborales: string | null
+  anios_experiencia: number | null
+  gestion: number | null
+  asignaciones: AsignacionDocente[]
+  tiene_usuario: boolean
+}
+
+export const esquemaDocente = z.object({
+  persona: esquemaPersona,
+  titulo_academico: opcional(100),
+  fecha_contrato: z.string(),
+  anios_experiencia: z
+    .string()
+    .trim()
+    .refine((v) => !v || (/^\d+$/.test(v) && Number(v) <= 60), 'Número entero entre 0 y 60'),
+  antecedentes_laborales: opcional(1000),
+})

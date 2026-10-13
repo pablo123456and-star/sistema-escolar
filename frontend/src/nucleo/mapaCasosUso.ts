@@ -25,7 +25,7 @@ export const PAQUETES: Paquete[] = [
       { codigo: 'CU07', nombre: 'Registrar antecedentes médicos y seguimiento del estudiante', ruta: '/personas/cu07' },
       { codigo: 'CU08', nombre: 'Registrar tutor y asociarlo a estudiante', ruta: '/personas/tutores' },
       { codigo: 'CU09', nombre: 'Consultar estudiantes/tutores relacionados', ruta: '/personas/cu09' },
-      { codigo: 'CU10', nombre: 'Registrar docente', ruta: '/personas/cu10' },
+      { codigo: 'CU10', nombre: 'Registrar docente', ruta: '/personas/docentes' },
       { codigo: 'CU11', nombre: 'Registrar personal administrativo', ruta: '/personas/cu11' },
     ],
   },

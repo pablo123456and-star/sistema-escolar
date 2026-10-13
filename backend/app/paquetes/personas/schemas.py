@@ -215,3 +215,51 @@ class TutorDetalleSalida(PersonaSalida):
     ocupacion: str | None
     estudiantes: list[VinculoSalida]
     tiene_usuario: bool
+
+
+# ---- Docente (CU10) -------------------------------------------------------------
+class DocenteCrear(_Base):
+    persona: PersonaEntrada
+    titulo_academico: str | None = Field(None, max_length=100)
+    fecha_contrato: date | None = None
+    antecedentes_laborales: str | None = Field(None, max_length=1000)
+    anios_experiencia: int | None = Field(None, ge=0, le=60)
+
+
+class DocenteActualizar(_Base):
+    persona: PersonaActualizar | None = None
+    titulo_academico: str | None = Field(None, max_length=100)
+    fecha_contrato: date | None = None
+    antecedentes_laborales: str | None = Field(None, max_length=1000)
+    anios_experiencia: int | None = Field(None, ge=0, le=60)
+
+
+class DocenteSalida(BaseModel):
+    ci: str
+    expedido: str | None
+    nombre_persona: str
+    apellidos: str
+    sexo: str | None
+    telefono: str | None
+    email: str | None
+    titulo_academico: str | None
+    anios_experiencia: int | None
+    estado_persona: str
+    cantidad_asignaciones: int
+
+
+class AsignacionDocenteSalida(BaseModel):
+    id_asignacion: int
+    materia: str
+    curso: str
+    aula: str
+
+
+class DocenteDetalleSalida(PersonaSalida):
+    titulo_academico: str | None
+    fecha_contrato: date | None
+    antecedentes_laborales: str | None
+    anios_experiencia: int | None
+    gestion: int | None
+    asignaciones: list[AsignacionDocenteSalida]
+    tiene_usuario: bool
