@@ -22,6 +22,7 @@ import {
   MegaphoneIcon,
   MenuIcon,
   NotebookPenIcon,
+  PresentationIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
   UserIcon,
@@ -59,6 +60,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/seguridad/bitacora', texto: 'Bitácora', icono: ScrollTextIcon, roles: ['administrador'] },
   { ruta: '/personas/estudiantes', texto: 'Estudiantes', icono: GraduationCapIcon, roles: ['administrador'] },
   { ruta: '/personas/tutores', texto: 'Padres y tutores', icono: UsersRoundIcon, roles: ['administrador'] },
+  // CU10 - Registrar docente
+  { ruta: '/personas/docentes', texto: 'Docentes', icono: PresentationIcon, roles: ['administrador'] },
   // CU13 - Gestionar materias y plan de estudios
   { ruta: '/academico/materias', texto: 'Materias y plan de estudios', icono: NotebookPenIcon, roles: ['administrador'] },
   // CU14 - Asignar profesor a materia/curso

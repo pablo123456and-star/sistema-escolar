@@ -174,3 +174,53 @@ async def listar_tutores(sesion: AsyncSession, *, q: str | None, estado: str | N
     filas = (await sesion.execute(
         base.order_by(Persona.apellidos, Persona.nombre_persona).offset((pagina - 1) * tamano).limit(tamano))).all()
     return filas, total or 0
+
+
+# ---- Docentes ---------------------------------------------------------------------
+async def listar_docentes(sesion: AsyncSession, *, q: str | None, estado: str | None, pagina: int, tamano: int):
+    filtros, params = ["TRUE"], {}
+    if q:
+        filtros.append("(lower(p.nombre_persona || ' ' || p.apellidos) LIKE :q OR p.ci LIKE :q)")
+        params["q"] = _like(q)
+    if estado:
+        filtros.append("p.estado_persona = :estado")
+        params["estado"] = estado
+    base = f"""
+        FROM profesor pr
+        JOIN persona p ON p.ci = pr.ci_profesor
+        WHERE {' AND '.join(filtros)}"""
+    total = await sesion.scalar(text(f"SELECT count(*) {base}"), params)
+    filas = (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.expedido, p.nombre_persona, p.apellidos, p.sexo, p.telefono, p.email,
+                            pr.titulo_academico, pr.anios_experiencia, p.estado_persona,
+                            (SELECT count(*)
+                               FROM asignacion_profesor_clase a
+                               JOIN gestion g ON g.id_gestion = a.id_gestion_asignacion
+                                             AND g.estado_gestion = 'abierta'
+                              WHERE a.ci_profesor_asignacion = p.ci) AS cantidad_asignaciones
+                     {base}
+                     ORDER BY p.apellidos, p.nombre_persona
+                     LIMIT :limite OFFSET :desde"""),
+            {**params, "limite": tamano, "desde": (pagina - 1) * tamano},
+        )
+    ).all()
+    return filas, total or 0
+
+
+async def asignaciones_docente(sesion: AsyncSession, ci: str, id_gestion: int):
+    """Materias que dicta el docente en la gestión indicada (con curso y aula)."""
+    return (
+        await sesion.execute(
+            text(
+                """SELECT a.id_asignacion, m.nombre_materia AS materia, vc.nombre_curso AS curso, au.numero AS aula
+                     FROM asignacion_profesor_clase a
+                     JOIN materia m  ON m.id_materia = a.id_materia_asignacion
+                     JOIN v_curso vc ON vc.id_curso = a.id_curso_asignacion
+                     JOIN aula au    ON au.id_aula = a.id_aula_asignacion
+                    WHERE a.ci_profesor_asignacion = :ci AND a.id_gestion_asignacion = :g
+                    ORDER BY vc.id_nivel, vc.orden_grado, vc.paralelo, m.nombre_materia"""
+            ),
+            {"ci": ci, "g": id_gestion},
+        )
+    ).all()
