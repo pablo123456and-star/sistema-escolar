@@ -3,7 +3,7 @@
  * año (CU23), próximas clases y horario (CU20), asistencia (CU22), comunicados (CU27)
  * y accesos a autoevaluación, boletín (CU24), inscripciones (CU17) y pagos (CU25).
  *
- * PROTOTIPO: usa datosEjemplo.ts hasta implementar esos casos de uso.
+ * PROTOTIPO: el horario ya es real (CU20); el resto usa datosEjemplo.ts hasta implementar esos casos de uso.
  */
 import {
   BookOpenIcon,
@@ -19,6 +19,7 @@ import {
   WalletIcon,
 } from 'lucide-react'
 import { bolivianos } from '@/lib/formato'
+import { useHorarioInicio, useOpcionesConsulta } from '@/paquetes/horarios/api'
 import { porcentajeAsistencia, promedioGeneral, proximaCuota, proximasClases } from './calculos'
 import {
   AccesoRapido,
@@ -36,13 +37,15 @@ import { MATEO, PERIODO_ACTUAL } from './datosEjemplo'
 
 export default function PanelEstudiante() {
   const e = MATEO
+  const miCurso = useOpcionesConsulta().data?.cursos[0]
+  const horario = useHorarioInicio(miCurso ? { id_curso: miCurso.id_curso } : null)
   const cuota = proximaCuota(e.cuotas)
   const alDia = !e.cuotas.some((c) => c.estado === 'vencida')
 
   return (
     <div className="space-y-6">
       <Bienvenida extra={e.curso} />
-      <AvisoPrototipo casos="CU20, CU22, CU23, CU24, CU25 y CU27" />
+      <AvisoPrototipo casos="CU22, CU23, CU24, CU25 y CU27" />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Indicador titulo="Promedio general" valor={promedioGeneral(e.notas) ?? '—'} detalle="Sobre 100 puntos" icono={TrendingUpIcon} tono="border-blue-100 bg-blue-50 text-blue-600" />
@@ -62,7 +65,7 @@ export default function PanelEstudiante() {
           <TablaNotas notas={e.notas} />
         </Tarjeta>
         <Tarjeta titulo="Próximas clases" icono={CalendarClockIcon}>
-          <ListaClases clases={proximasClases(e.horario)} detalle="docente" />
+          <ListaClases clases={proximasClases(horario)} detalle="docente" />
         </Tarjeta>
       </div>
 
@@ -73,8 +76,8 @@ export default function PanelEstudiante() {
         <AccesoRapido icono={WalletIcon} titulo="Mis pagos" descripcion="Cuotas y comprobantes" ruta="/administracion/cu25" />
       </div>
 
-      <Tarjeta titulo="Mi horario" icono={CalendarDaysIcon} enlace={{ texto: 'Ver horarios', ruta: '/horarios/cu20' }} sinRelleno>
-        <HorarioSemanal bloques={e.horario} detalle="docente" />
+      <Tarjeta titulo="Mi horario" icono={CalendarDaysIcon} enlace={{ texto: 'Ver horarios', ruta: '/horarios/consulta' }} sinRelleno>
+        <HorarioSemanal bloques={horario} detalle="docente" />
       </Tarjeta>
 
       <div className="grid gap-6 lg:grid-cols-2">

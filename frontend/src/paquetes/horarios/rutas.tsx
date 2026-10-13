@@ -10,6 +10,6 @@ const soloAdministrador = (elemento: ReactNode) => <RutaProtegida roles={['admin
 
 export const rutasHorarios: RouteObject[] = [
   { path: 'horarios/cu18', element: soloAdministrador(<CU18GestionarAulas />) },
-  { path: 'horarios/cu19', element: soloAdministrador(<CU19GenerarHorario />) },
-  { path: 'horarios/cu20', element: <CU20ConsultarHorarios /> },
+  { path: 'horarios/generar', element: soloAdministrador(<CU19GenerarHorario />) },
+  { path: 'horarios/consulta', element: <CU20ConsultarHorarios /> },
 ]

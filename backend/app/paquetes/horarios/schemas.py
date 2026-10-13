@@ -42,3 +42,84 @@ class HorarioSalida(BaseModel):
     profesor: str
     id_aula: int
     aula: str
+
+
+class HorarioActualizar(BaseModel):
+    """Cambios de un bloque (actualización parcial). Las horas se validan juntas en el caso de uso."""
+    id_asignacion: int | None = Field(default=None, gt=0)
+    dia: Dia | None = None
+    hora_inicio: time | None = None
+    hora_final: time | None = None
+
+    @model_validator(mode="after")
+    def _algun_cambio(self):
+        if not self.model_fields_set:
+            raise ValueError("Indique al menos un dato a modificar.")
+        return self
+
+
+# ---- CU19: generar horario -------------------------------------------------------
+class CursoHorarioSalida(BaseModel):
+    """Curso de la gestión abierta con el avance de su horario."""
+    id_curso: int
+    nombre_curso: str
+    id_grado: int
+    nombre_grado: str
+    paralelo: str
+    nivel: str
+    asignaciones: int
+    bloques: int
+
+
+class AsignacionBloqueSalida(BaseModel):
+    """Asignación del curso (materia + docente + aula) que se puede poner en el horario."""
+    id_asignacion: int
+    id_materia: int
+    nombre_materia: str
+    carga_horaria: int | None
+    ci_profesor: str
+    profesor: str
+    aula: str
+    bloques: int
+
+
+class HorarioCursoSalida(BaseModel):
+    id_curso: int
+    nombre_curso: str
+    gestion: int
+    asignaciones: list[AsignacionBloqueSalida]
+    bloques: list[HorarioSalida]
+
+
+# ---- CU20: consultar horarios ----------------------------------------------------
+class CursoOpcionConsulta(BaseModel):
+    id_curso: int
+    nombre_curso: str
+
+
+class DocenteOpcionConsulta(BaseModel):
+    ci: str
+    nombre: str
+
+
+class EstudianteOpcionConsulta(BaseModel):
+    ci: str
+    nombre: str
+    id_curso: int | None
+    nombre_curso: str | None
+
+
+class OpcionesConsultaSalida(BaseModel):
+    """Qué horarios puede consultar el usuario según su rol."""
+    rol: str
+    gestion: int | None
+    cursos: list[CursoOpcionConsulta]
+    docentes: list[DocenteOpcionConsulta]
+    estudiantes: list[EstudianteOpcionConsulta]
+
+
+class HorarioConsultaSalida(BaseModel):
+    tipo: Literal["curso", "docente"]
+    titulo: str
+    gestion: int
+    bloques: list[HorarioSalida]

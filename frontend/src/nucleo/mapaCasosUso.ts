@@ -46,8 +46,8 @@ export const PAQUETES: Paquete[] = [
     titulo: 'Horarios: aulas y horarios de clase',
     casos: [
       { codigo: 'CU18', nombre: 'Gestionar aulas', ruta: '/horarios/cu18' },
-      { codigo: 'CU19', nombre: 'Generar horario de clases (aula, profesor, materia)', ruta: '/horarios/cu19' },
-      { codigo: 'CU20', nombre: 'Consultar horarios', ruta: '/horarios/cu20' },
+      { codigo: 'CU19', nombre: 'Generar horario de clases (aula, profesor, materia)', ruta: '/horarios/generar' },
+      { codigo: 'CU20', nombre: 'Consultar horarios', ruta: '/horarios/consulta' },
     ],
   },
   {
