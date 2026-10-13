@@ -664,3 +664,91 @@ async def asignacion_con_calificaciones_cu14(
     )
 
     return bool(resultado)
+
+# ============================================================
+# CU16 - INSCRIBIR ESTUDIANTE EN GESTIÓN ACADÉMICA
+# ============================================================
+
+# Inscripción del estudiante en la gestión abierta (cualquier estado: solo hay una por gestión)
+_INSCRIPCION_GESTION_CU16 = """
+    SELECT i.ci_estudiante_inscripcion AS ci, i.id_inscripcion, i.estado_inscripcion, vc.nombre_curso AS curso
+      FROM inscripcion i
+      JOIN gestion g  ON g.id_gestion = i.id_gestion_inscripcion AND g.estado_gestion = 'abierta'
+      JOIN v_curso vc ON vc.id_curso = i.id_curso_inscripcion
+"""
+
+
+async def buscar_estudiantes_cu16(sesion: AsyncSession, *, q: str | None, pagina: int, tamano: int):
+    filtros, params = ["TRUE"], {}
+    if q:
+        filtros.append("(lower(p.nombre_persona || ' ' || p.apellidos) LIKE :q OR p.ci LIKE :q "
+                       "OR lower(coalesce(e.rude, '')) LIKE :q)")
+        params["q"] = f"%{q.strip().lower()}%"
+    base = f"""
+        FROM estudiante e
+        JOIN persona p ON p.ci = e.ci_estudiante
+        LEFT JOIN ({_INSCRIPCION_GESTION_CU16}) ig ON ig.ci = e.ci_estudiante
+        WHERE {' AND '.join(filtros)}"""
+    total = await sesion.scalar(text(f"SELECT count(*) {base}"), params)
+    filas = (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.expedido, p.nombre_persona, p.apellidos, e.rude, p.estado_persona,
+                            ig.id_inscripcion, ig.estado_inscripcion, ig.curso
+                     {base}
+                     ORDER BY p.apellidos, p.nombre_persona
+                     LIMIT :limite OFFSET :desde"""),
+            {**params, "limite": tamano, "desde": (pagina - 1) * tamano},
+        )
+    ).all()
+    return filas, total or 0
+
+
+async def datos_boleta_cu16(sesion: AsyncSession, id_inscripcion: int):
+    return (
+        await sesion.execute(
+            text("""SELECT i.id_inscripcion, i.fecha_inscripcion, i.estado_inscripcion,
+                           p.ci, p.expedido, p.nombre_persona, p.apellidos, p.fecha_nacimiento, e.rude,
+                           g.id_gestion, g.anio AS gestion, vc.id_curso, vc.nombre_curso AS curso,
+                           vc.nombre_grado AS grado, vc.paralelo, vc.nombre_nivel AS nivel
+                      FROM inscripcion i
+                      JOIN persona p    ON p.ci = i.ci_estudiante_inscripcion
+                      JOIN estudiante e ON e.ci_estudiante = i.ci_estudiante_inscripcion
+                      JOIN gestion g    ON g.id_gestion = i.id_gestion_inscripcion
+                      JOIN v_curso vc   ON vc.id_curso = i.id_curso_inscripcion
+                     WHERE i.id_inscripcion = :id"""),
+            {"id": id_inscripcion},
+        )
+    ).one_or_none()
+
+
+async def materias_boleta_cu16(sesion: AsyncSession, id_curso: int, id_gestion: int):
+    """Materias del plan del grado del curso, con su docente y aula si ya están asignados."""
+    return (
+        await sesion.execute(
+            text("""SELECT m.nombre_materia AS materia, m.carga_horaria,
+                           pp.nombre_persona || ' ' || pp.apellidos AS docente, au.numero AS aula
+                      FROM curso c
+                      JOIN materia_grado mg ON mg.id_grado_mg = c.id_grado_curso
+                      JOIN materia m        ON m.id_materia = mg.id_materia_mg
+                      LEFT JOIN asignacion_profesor_clase a
+                             ON a.id_curso_asignacion = c.id_curso AND a.id_materia_asignacion = m.id_materia
+                            AND a.id_gestion_asignacion = :g
+                      LEFT JOIN persona pp ON pp.ci = a.ci_profesor_asignacion
+                      LEFT JOIN aula au    ON au.id_aula = a.id_aula_asignacion
+                     WHERE c.id_curso = :c
+                     ORDER BY m.nombre_materia"""),
+            {"c": id_curso, "g": id_gestion},
+        )
+    ).all()
+
+
+async def horario_boleta_cu16(sesion: AsyncSession, id_curso: int, id_gestion: int):
+    return (
+        await sesion.execute(
+            text("""SELECT dia, hora_inicio, hora_final, nombre_materia AS materia, profesor AS docente, aula
+                      FROM v_horario
+                     WHERE id_curso = :c AND id_gestion = :g
+                     ORDER BY dia_orden, hora_inicio"""),
+            {"c": id_curso, "g": id_gestion},
+        )
+    ).all()

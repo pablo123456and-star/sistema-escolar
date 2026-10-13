@@ -30,6 +30,17 @@ async def inscribir(sesion: AsyncSession, ci_estudiante: str, id_curso: int) -> 
     gestion = await gestion_abierta(sesion)
     if gestion is None:
         raise ErrorNegocio("No hay una gestión abierta para inscribir.")
+    estado = await sesion.scalar(
+        text(
+            """SELECT p.estado_persona FROM estudiante e JOIN persona p ON p.ci = e.ci_estudiante
+                WHERE e.ci_estudiante = :ci"""
+        ),
+        {"ci": ci_estudiante},
+    )
+    if estado is None:
+        raise NoEncontrado("No existe un estudiante con ese CI.")
+    if estado != "activo":
+        raise ErrorNegocio("El estudiante está inactivo: reactívelo antes de inscribirlo.")
     curso = await sesion.get(Curso, id_curso)
     if curso is None:
         raise NoEncontrado("Curso no encontrado.")
