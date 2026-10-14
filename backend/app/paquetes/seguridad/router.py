@@ -6,7 +6,7 @@ Cada endpoint llama a su caso de uso en casos_uso/.
 from datetime import date
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Request, status
 
 from app.nucleo.dependencias import Administrador, Sesion, Usuario
 from app.nucleo.esquemas import Mensaje, NumeroPagina, Pagina, TamanoPagina
@@ -19,17 +19,18 @@ from app.paquetes.seguridad.casos_uso import (
 from app.paquetes.seguridad.schemas import (
     AsignarRolEntrada, BitacoraSalida, CambiarContrasenaEntrada, ContrasenaTemporalSalida, IniciarSesionEntrada,
     OpcionesBitacoraSalida, PerfilSalida, PermisoSalida, PersonaSinCuentaSalida, RecuperarContrasenaEntrada,
-    ResumenInicioSalida, RolActualizar, RolSalida, SesionSalida, SolicitudRecuperacionSalida, UsuarioActualizar,
-    UsuarioCrear, UsuarioSalida,
+    RestablecerContrasenaEntrada, ResumenInicioSalida, RolActualizar, RolSalida, SesionSalida,
+    SolicitudRecuperacionSalida, UsuarioActualizar, UsuarioCrear, UsuarioSalida, ValidarTokenSalida,
 )
 
 router = APIRouter(prefix="/seguridad", tags=["seguridad"])
 
 
-# ---- CU01: iniciar sesión (incluye recuperar contraseña) ---------------------
+# ---- CU01: iniciar sesión, bloqueos y recuperación de contraseña ------------
 @router.post("/sesion", response_model=SesionSalida, summary="CU01 - Iniciar sesión")
-async def iniciar_sesion(datos: IniciarSesionEntrada, sesion: Sesion):
-    return await cu01.iniciar_sesion(sesion, datos)
+async def iniciar_sesion(datos: IniciarSesionEntrada, sesion: Sesion, request: Request):
+    ip_cliente = request.client.host if request.client else None
+    return await cu01.iniciar_sesion(sesion, datos, ip_cliente)
 
 
 @router.get("/perfil", response_model=PerfilSalida, summary="CU01 - Datos del usuario conectado")
@@ -43,9 +44,22 @@ async def cambiar_contrasena(datos: CambiarContrasenaEntrada, usuario: Usuario, 
     return Mensaje(mensaje="Contraseña actualizada.")
 
 
-@router.post("/recuperar-contrasena", response_model=Mensaje, summary="CU01 - Solicitar recuperación de contraseña")
-async def recuperar_contrasena(datos: RecuperarContrasenaEntrada, sesion: Sesion):
-    return Mensaje(mensaje=await cu01.solicitar_recuperacion(sesion, datos.identificador))
+@router.post("/recuperar-contrasena", response_model=Mensaje, summary="CU01 - Solicitar recuperación por correo")
+async def recuperar_contrasena(datos: RecuperarContrasenaEntrada, sesion: Sesion, request: Request):
+    ip_cliente = request.client.host if request.client else None
+    return Mensaje(mensaje=await cu01.solicitar_recuperacion(sesion, datos.dato, ip_cliente))
+
+
+@router.get("/recuperar-contrasena/validar", response_model=ValidarTokenSalida, summary="CU01 - Validar token de recuperación")
+async def validar_token(token: str, sesion: Sesion):
+    return await cu01.validar_token_recuperacion(sesion, token)
+
+
+@router.post("/restablecer-contrasena", response_model=Mensaje, summary="CU01 - Restablecer contraseña con token")
+async def restablecer_contrasena(datos: RestablecerContrasenaEntrada, sesion: Sesion, request: Request):
+    ip_cliente = request.client.host if request.client else None
+    mensaje = await cu01.restablecer_contrasena_con_token(sesion, datos, ip_cliente)
+    return Mensaje(mensaje=mensaje)
 
 
 @router.get("/inicio", response_model=ResumenInicioSalida, summary="CU01 - Panel de inicio")

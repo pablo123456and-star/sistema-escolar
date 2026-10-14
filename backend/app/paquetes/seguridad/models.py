@@ -6,7 +6,7 @@ impide modificarla o borrarla).
 """
 from datetime import datetime
 
-from sqlalchemy import BigInteger, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,34 @@ class Usuario(Base):
     ci_persona: Mapped[str] = mapped_column(ForeignKey("persona.ci"))
     creado_en: Mapped[datetime] = mapped_column(server_default="now()")
     actualizado_en: Mapped[datetime] = mapped_column(server_default="now()")
+
+    # Bloqueo progresivo por intentos fallidos
+    intentos_fallidos: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    bloqueos_consecutivos: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    ultimo_intento_fallido: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class TokenRecuperacion(Base):
+    __tablename__ = "token_recuperacion"
+
+    id_recuperacion: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id_usuario: Mapped[int] = mapped_column(ForeignKey("usuario.id_usuario", ondelete="CASCADE"))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expira_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    usado: Mapped[bool] = mapped_column(server_default="false", default=False)
+    usado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ip_solicitud: Mapped[str | None] = mapped_column(String(45))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
+
+
+class RateLimitIp(Base):
+    __tablename__ = "rate_limit_ip"
+
+    ip: Mapped[str] = mapped_column(String(45), primary_key=True)
+    intentos: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ultimo_intento: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
 
 
 class Bitacora(Base):

@@ -3,13 +3,13 @@ Acceso a la base de datos del paquete seguridad (compartido).
 
 Consultas y escrituras con SQLAlchemy sobre las tablas de models.py.
 """
-from datetime import date
+from datetime import UTC, date, datetime
 
-from sqlalchemy import Date, and_, cast, func, or_, select, text
+from sqlalchemy import Date, and_, cast, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.paquetes.personas.models import Administrativo, Persona
-from app.paquetes.seguridad.models import Bitacora, Rol, Usuario
+from app.paquetes.seguridad.models import Bitacora, RateLimitIp, Rol, TokenRecuperacion, Usuario
 from app.paquetes.seguridad.politicas import (
     ACCION_CAMBIO_PROPIO, ACCION_RESTABLECIDA, ACCION_SOLICITUD, ESPECIALIZACION,
 )
@@ -37,8 +37,18 @@ async def buscar_para_login(sesion: AsyncSession, identificador: str):
     ident = identificador.strip().lower()
     consulta = (
         select(
-            Usuario.id_usuario, Usuario.password_hash, Usuario.estado_usuario,
-            Rol.nombre_rol, Persona.estado_persona,
+            Usuario.id_usuario,
+            Usuario.nombre_usuario,
+            Usuario.password_hash,
+            Usuario.estado_usuario,
+            Usuario.intentos_fallidos,
+            Usuario.bloqueado_hasta,
+            Usuario.bloqueos_consecutivos,
+            Rol.nombre_rol,
+            Persona.estado_persona,
+            Persona.nombre_persona.label("nombres"),
+            Persona.apellidos,
+            Persona.email,
         )
         .join(Rol, Rol.id_rol == Usuario.id_rol_usuario)
         .join(Persona, Persona.ci == Usuario.ci_persona)
@@ -232,3 +242,151 @@ async def registrar_en_bitacora(sesion: AsyncSession, accion: str, operacion: st
         text("SELECT fn_registrar_bitacora(:accion, 'SEGURIDAD', :operacion, :tabla, :registro)"),
         {"accion": accion, "operacion": operacion, "tabla": tabla, "registro": registro_id},
     )
+
+
+# ---- Bloqueo por intentos fallidos y recuperación de cuentas -----------------
+async def registrar_intento_fallido(
+    sesion: AsyncSession, id_usuario: int, bloqueado_hasta: datetime | None, nivel_bloqueo: int
+) -> None:
+    await sesion.execute(
+        update(Usuario)
+        .where(Usuario.id_usuario == id_usuario)
+        .values(
+            intentos_fallidos=Usuario.intentos_fallidos + 1,
+            bloqueado_hasta=bloqueado_hasta,
+            bloqueos_consecutivos=nivel_bloqueo,
+            ultimo_intento_fallido=datetime.now(UTC),
+        )
+    )
+
+
+async def restablecer_intentos(sesion: AsyncSession, id_usuario: int) -> None:
+    await sesion.execute(
+        update(Usuario)
+        .where(Usuario.id_usuario == id_usuario)
+        .values(
+            intentos_fallidos=0,
+            bloqueado_hasta=None,
+            bloqueos_consecutivos=0,
+            ultimo_intento_fallido=None,
+        )
+    )
+
+
+async def buscar_cuentas_por_correo(sesion: AsyncSession, correo: str):
+    """Busca cuentas de usuario activas asociadas a un correo electrónico."""
+    c = correo.strip().lower()
+    consulta = (
+        select(
+            Usuario.id_usuario,
+            Usuario.nombre_usuario,
+            Persona.nombre_persona.label("nombres"),
+            Persona.apellidos,
+            Persona.email,
+        )
+        .join(Persona, Persona.ci == Usuario.ci_persona)
+        .where(
+            func.lower(Persona.email) == c,
+            Usuario.estado_usuario == "activo",
+            Persona.estado_persona == "activo",
+        )
+    )
+    return (await sesion.execute(consulta)).all()
+
+
+async def crear_token_recuperacion(
+    sesion: AsyncSession, id_usuario: int, token_hash: str, expira_en: datetime, ip_solicitud: str | None
+) -> TokenRecuperacion:
+    """Invalida tokens anteriores del usuario y registra uno nuevo."""
+    await sesion.execute(
+        update(TokenRecuperacion)
+        .where(TokenRecuperacion.id_usuario == id_usuario, TokenRecuperacion.usado.is_(False))
+        .values(usado=True, usado_en=datetime.now(UTC))
+    )
+    nuevo = TokenRecuperacion(
+        id_usuario=id_usuario,
+        token_hash=token_hash,
+        expira_en=expira_en,
+        ip_solicitud=ip_solicitud,
+    )
+    sesion.add(nuevo)
+    await sesion.flush()
+    return nuevo
+
+
+async def obtener_token_recuperacion(sesion: AsyncSession, token_hash: str):
+    consulta = (
+        select(
+            TokenRecuperacion.id_recuperacion,
+            TokenRecuperacion.id_usuario,
+            TokenRecuperacion.expira_en,
+            TokenRecuperacion.usado,
+            Usuario.nombre_usuario,
+            Usuario.estado_usuario,
+            Persona.nombre_persona.label("nombres"),
+            Persona.apellidos,
+        )
+        .join(Usuario, Usuario.id_usuario == TokenRecuperacion.id_usuario)
+        .join(Persona, Persona.ci == Usuario.ci_persona)
+        .where(TokenRecuperacion.token_hash == token_hash)
+    )
+    return (await sesion.execute(consulta)).one_or_none()
+
+
+async def consumir_token_recuperacion(sesion: AsyncSession, id_recuperacion: int) -> None:
+    await sesion.execute(
+        update(TokenRecuperacion)
+        .where(TokenRecuperacion.id_recuperacion == id_recuperacion)
+        .values(usado=True, usado_en=datetime.now(UTC))
+    )
+
+
+async def verificar_rate_limit_ip(sesion: AsyncSession, ip: str) -> tuple[bool, int]:
+    """Retorna (bloqueado: bool, segundos_restantes: int)."""
+    if not ip:
+        return False, 0
+    registro = await sesion.get(RateLimitIp, ip)
+    if not registro or not registro.bloqueado_hasta:
+        return False, 0
+    ahora = datetime.now(UTC)
+    bloqueado_hasta = registro.bloqueado_hasta
+    if bloqueado_hasta.tzinfo is None:
+        bloqueado_hasta = bloqueado_hasta.replace(tzinfo=UTC)
+    if ahora < bloqueado_hasta:
+        return True, int((bloqueado_hasta - ahora).total_seconds())
+    return False, 0
+
+
+async def registrar_intento_ip(sesion: AsyncSession, ip: str, max_intentos: int = 15, minutos_bloqueo: int = 15):
+    """Protege contra ataques de fuerza bruta distribuidos o automatizados por IP."""
+    if not ip:
+        return
+    registro = await sesion.get(RateLimitIp, ip)
+    ahora = datetime.now(UTC)
+    if not registro:
+        registro = RateLimitIp(ip=ip, intentos=1, ultimo_intento=ahora)
+        sesion.add(registro)
+    else:
+        ultimo = registro.ultimo_intento
+        if ultimo.tzinfo is None:
+            ultimo = ultimo.replace(tzinfo=UTC)
+        if (ahora - ultimo).total_seconds() > 3600:
+            registro.intentos = 1
+            registro.bloqueado_hasta = None
+        else:
+            registro.intentos += 1
+        registro.ultimo_intento = ahora
+        if registro.intentos >= max_intentos:
+            from datetime import timedelta
+            registro.bloqueado_hasta = ahora + timedelta(minutes=minutos_bloqueo)
+    await sesion.flush()
+
+
+async def restablecer_intento_ip(sesion: AsyncSession, ip: str) -> None:
+    if not ip:
+        return
+    registro = await sesion.get(RateLimitIp, ip)
+    if registro:
+        registro.intentos = 0
+        registro.bloqueado_hasta = None
+        await sesion.flush()

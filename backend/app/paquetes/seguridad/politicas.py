@@ -29,6 +29,7 @@ ESPECIALIZACION = {
 # Acciones que el CU01 y el CU02 registran en la bitácora
 ACCION_SOLICITUD = "Solicitud de recuperación de contraseña"
 ACCION_RESTABLECIDA = "Contraseña restablecida por el administrador"
+ACCION_RESTABLECIDA_CORREO = "Contraseña restablecida mediante enlace de correo"
 ACCION_CAMBIO_PROPIO = "Cambio de contraseña por el propio usuario"
 
 # Matriz de permisos por rol: lo que ve el CU03. Es la que aplican los
