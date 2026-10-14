@@ -31,12 +31,22 @@ export type ResumenInicio = {
   actividades: { fecha_hora: string; accion: string; modulo: string | null; nombre_usuario: string | null }[]
 }
 
-const contrasenaNueva = z
+export const REQUISITOS_CONTRASENA = [
+  { id: 'longitud', etiqueta: 'Mínimo 8 caracteres', test: (p: string) => p.length >= 8 },
+  { id: 'mayuscula', etiqueta: 'Al menos una letra mayúscula (A-Z)', test: (p: string) => /[A-Z]/.test(p) },
+  { id: 'minuscula', etiqueta: 'Al menos una letra minúscula (a-z)', test: (p: string) => /[a-z]/.test(p) },
+  { id: 'numero', etiqueta: 'Al menos un número (0-9)', test: (p: string) => /[0-9]/.test(p) },
+  { id: 'especial', etiqueta: 'Al menos un carácter especial (!@#$%^&*)', test: (p: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(p) },
+]
+
+export const contrasenaNueva = z
   .string()
   .min(8, 'Mínimo 8 caracteres')
   .max(64, 'Máximo 64 caracteres')
-  .regex(/[A-Za-z]/, 'Debe tener letras')
-  .regex(/[0-9]/, 'Debe tener números')
+  .regex(/[A-Z]/, 'Debe incluir al menos una letra mayúscula')
+  .regex(/[a-z]/, 'Debe incluir al menos una letra minúscula')
+  .regex(/[0-9]/, 'Debe incluir al menos un número')
+  .regex(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/, 'Debe incluir al menos un carácter especial (!@#$%^&*)')
 
 export const esquemaLogin = z.object({
   identificador: z.string().trim().min(1, 'Ingrese su usuario o correo'),
@@ -46,14 +56,27 @@ export const esquemaLogin = z.object({
 export type DatosLogin = z.infer<typeof esquemaLogin>
 
 export const esquemaRecuperar = z.object({
-  identificador: z.string().trim().min(1, 'Ingrese su usuario o correo electrónico'),
+  correo: z
+    .string()
+    .trim()
+    .min(1, 'Ingrese su correo electrónico')
+    .email('Ingrese un formato de correo electrónico válido (ej. usuario@ejemplo.com)'),
 })
+export type DatosRecuperar = z.infer<typeof esquemaRecuperar>
+
+export const esquemaRestablecer = z
+  .object({
+    nueva: contrasenaNueva,
+    confirmar: z.string().min(1, 'Confirme su nueva contraseña'),
+  })
+  .refine((d) => d.nueva === d.confirmar, { message: 'Las contraseñas no coinciden', path: ['confirmar'] })
+export type DatosRestablecer = z.infer<typeof esquemaRestablecer>
 
 export const esquemaCambiarContrasena = z
   .object({
     actual: z.string().min(1, 'Ingrese su contraseña actual'),
     nueva: contrasenaNueva,
-    confirmar: z.string(),
+    confirmar: z.string().min(1, 'Confirme su nueva contraseña'),
   })
   .refine((d) => d.nueva === d.confirmar, { message: 'Las contraseñas no coinciden', path: ['confirmar'] })
 

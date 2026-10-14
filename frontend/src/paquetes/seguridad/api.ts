@@ -25,8 +25,21 @@ export const seguridadApi = {
   iniciarSesion: (d: { identificador: string; contrasena: string; recordar: boolean }) =>
     api<Sesion>(`${S}/sesion`, { metodo: 'POST', cuerpo: d }),
   perfil: () => api<Perfil>(`${S}/perfil`),
-  recuperar: (identificador: string) =>
-    api<{ mensaje: string }>(`${S}/recuperar-contrasena`, { metodo: 'POST', cuerpo: { identificador } }),
+  recuperar: (correoOIdentificador: string) =>
+    api<{ mensaje: string }>(`${S}/recuperar-contrasena`, {
+      metodo: 'POST',
+      cuerpo: { correo: correoOIdentificador, identificador: correoOIdentificador },
+    }),
+  validarToken: (token: string) =>
+    api<{ valido: boolean; nombre_usuario?: string; nombre_completo?: string; mensaje: string }>(
+      `${S}/recuperar-contrasena/validar`,
+      { params: { token } }
+    ),
+  restablecerContrasena: (token: string, nueva: string) =>
+    api<{ mensaje: string }>(`${S}/restablecer-contrasena`, {
+      metodo: 'POST',
+      cuerpo: { token, nueva },
+    }),
   cambiarContrasena: (d: { actual: string; nueva: string }) =>
     api<{ mensaje: string }>(`${S}/perfil/contrasena`, { metodo: 'POST', cuerpo: d }),
 }

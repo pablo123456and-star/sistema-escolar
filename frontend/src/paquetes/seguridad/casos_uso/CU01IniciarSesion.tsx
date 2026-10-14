@@ -19,7 +19,16 @@ import { useState, type ReactNode } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeftIcon, CircleCheckIcon, EyeIcon, EyeOffIcon, LockIcon, MailIcon, UserIcon } from 'lucide-react'
+import {
+  ArrowLeftIcon,
+  CircleCheckIcon,
+  ClockIcon,
+  EyeIcon,
+  EyeOffIcon,
+  LockIcon,
+  MailIcon,
+  UserIcon,
+} from 'lucide-react'
 import { Button } from '@/componentes/ui/button'
 import { Checkbox } from '@/componentes/ui/checkbox'
 import { Input } from '@/componentes/ui/input'
@@ -28,7 +37,7 @@ import { mensajeError } from '@/nucleo/api'
 import { useSesion } from '@/nucleo/auth/contexto'
 import { seguridadApi } from '../api'
 import MarcoAcceso from '../componentes/MarcoAcceso'
-import { esquemaLogin, esquemaRecuperar, type DatosLogin } from '../schemas'
+import { esquemaLogin, esquemaRecuperar, type DatosLogin, type DatosRecuperar } from '../schemas'
 
 function CampoConIcono({ icono, error, children }: { icono: ReactNode; error?: string; children: ReactNode }) {
   return (
@@ -67,6 +76,12 @@ export default function CU01IniciarSesion() {
   })
 
   const e = form.formState.errors
+  const esBloqueo =
+    error &&
+    (error.toLowerCase().includes('bloquead') ||
+      error.toLowerCase().includes('intentos fallidos') ||
+      error.toLowerCase().includes('esperar'))
+
   return (
     <MarcoAcceso>
       <form onSubmit={enviar} className="w-full max-w-sm space-y-5" noValidate>
@@ -75,7 +90,21 @@ export default function CU01IniciarSesion() {
           <p className="mt-1 text-slate-500">Ingrese sus credenciales para continuar</p>
         </div>
 
-        {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-rose-200">{error}</p>}
+        {error && (
+          esBloqueo ? (
+            <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-300 space-y-1.5 shadow-sm">
+              <div className="flex items-center gap-2 font-semibold text-amber-800">
+                <ClockIcon className="size-5 text-amber-600 shrink-0" />
+                <span>Acceso bloqueado temporalmente</span>
+              </div>
+              <p className="text-xs text-amber-700 leading-relaxed">{error}</p>
+            </div>
+          ) : (
+            <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-rose-200">
+              {error}
+            </div>
+          )
+        )}
 
         <CampoConIcono icono={<UserIcon className="size-5" />} error={e.identificador?.message}>
           <Input
@@ -113,18 +142,20 @@ export default function CU01IniciarSesion() {
           render={({ field }) => (
             <div className="flex items-center gap-2">
               <Checkbox id="recordar" checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
-              <Label htmlFor="recordar" className="font-normal">Recordar sesión</Label>
+              <Label htmlFor="recordar" className="font-normal cursor-pointer">
+                Recordar sesión
+              </Label>
             </div>
           )}
         />
 
-        <Button type="submit" className="h-11 w-full text-base" disabled={form.formState.isSubmitting}>
+        <Button type="submit" className="h-11 w-full text-base font-semibold" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
         </Button>
 
         <p className="text-center">
-          <Link to="/recuperar-contrasena" className="text-sm text-blue-600 hover:underline">
-            ¿Olvidó su contraseña?
+          <Link to="/recuperar-contrasena" className="text-sm text-blue-600 hover:underline font-medium">
+            ¿Olvidaste tu contraseña?
           </Link>
         </p>
       </form>
@@ -132,19 +163,19 @@ export default function CU01IniciarSesion() {
   )
 }
 
-/** CU01 - flujo alternativo: recuperar contraseña. */
+/** CU01 - flujo alternativo: recuperar contraseña por correo. */
 export function CU01RecuperarContrasena() {
   const [mensaje, setMensaje] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const form = useForm<{ identificador: string }>({
+  const form = useForm<DatosRecuperar>({
     resolver: zodResolver(esquemaRecuperar),
-    defaultValues: { identificador: '' },
+    defaultValues: { correo: '' },
   })
 
-  const enviar = form.handleSubmit(async ({ identificador }) => {
+  const enviar = form.handleSubmit(async ({ correo }) => {
     setError(null)
     try {
-      setMensaje((await seguridadApi.recuperar(identificador)).mensaje)
+      setMensaje((await seguridadApi.recuperar(correo)).mensaje)
     } catch (e) {
       setError(mensajeError(e))
     }
@@ -158,33 +189,46 @@ export function CU01RecuperarContrasena() {
         </Link>
         <div className="text-center">
           <h1 className="text-3xl font-bold text-[#12306B]">Recuperar contraseña</h1>
-          <p className="mt-1 text-slate-500">
-            Ingrese su usuario o correo electrónico institucional para solicitar el restablecimiento.
+          <p className="mt-1 text-slate-500 text-sm">
+            Introduzca el correo electrónico vinculado a su cuenta para recibir las instrucciones y un enlace seguro de recuperación.
           </p>
         </div>
 
         {mensaje ? (
-          <div className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 ring-1 ring-emerald-200">
-            <CircleCheckIcon className="mb-2 size-6 text-emerald-600" />
-            {mensaje}
+          <div className="space-y-4">
+            <div className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 ring-1 ring-emerald-200 space-y-2">
+              <div className="flex items-center gap-2 font-semibold">
+                <CircleCheckIcon className="size-5 text-emerald-600 shrink-0" />
+                <span>Instrucciones enviadas</span>
+              </div>
+              <p className="text-xs leading-relaxed text-emerald-700">{mensaje}</p>
+              <p className="text-xs text-emerald-600 italic">
+                El enlace es de un solo uso y caduca en 15 minutos.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/login">Regresar al inicio de sesión</Link>
+            </Button>
           </div>
         ) : (
           <form onSubmit={enviar} className="space-y-5" noValidate>
             {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-rose-200">{error}</p>}
             <div className="grid gap-1.5">
-              <Label htmlFor="identificador">Usuario o correo electrónico institucional</Label>
-              <CampoConIcono icono={<MailIcon className="size-5" />} error={form.formState.errors.identificador?.message}>
+              <Label htmlFor="correo">Correo electrónico vinculado a la cuenta</Label>
+              <CampoConIcono icono={<MailIcon className="size-5" />} error={form.formState.errors.correo?.message}>
                 <Input
-                  id="identificador"
+                  id="correo"
+                  type="email"
                   placeholder="usuario@mariscalsucreg.edu.bo"
                   className="h-11 pl-10"
+                  autoComplete="email"
                   autoFocus
-                  {...form.register('identificador')}
+                  {...form.register('correo')}
                 />
               </CampoConIcono>
             </div>
-            <Button type="submit" className="h-11 w-full text-base" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Enviando...' : 'Enviar solicitud'}
+            <Button type="submit" className="h-11 w-full text-base font-semibold" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? 'Enviando...' : 'Enviar instrucciones'}
             </Button>
           </form>
         )}

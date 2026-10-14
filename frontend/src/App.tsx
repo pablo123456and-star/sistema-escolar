@@ -5,6 +5,7 @@ import LayoutPrincipal from '@/nucleo/layout/LayoutPrincipal'
 import PaginaInicio from '@/nucleo/PaginaInicio'
 import { rutasPaquetes } from '@/nucleo/rutas'
 import CU01IniciarSesion, { CU01RecuperarContrasena } from '@/paquetes/seguridad/casos_uso/CU01IniciarSesion'
+import RestablecerContrasena from '@/paquetes/seguridad/casos_uso/RestablecerContrasena'
 
 const router = createBrowserRouter([
   {
@@ -17,6 +18,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/login', element: <CU01IniciarSesion /> },
       { path: '/recuperar-contrasena', element: <CU01RecuperarContrasena /> },
+      { path: '/restablecer-contrasena', element: <RestablecerContrasena /> },
       {
         path: '/',
         element: (

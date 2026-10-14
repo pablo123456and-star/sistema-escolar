@@ -42,7 +42,31 @@ class CambiarContrasenaEntrada(BaseModel):
 
 
 class RecuperarContrasenaEntrada(BaseModel):
-    identificador: str = Field(min_length=1, max_length=100, description="Nombre de usuario o correo")
+    identificador: str | None = Field(None, max_length=100, description="Nombre de usuario o correo")
+    correo: str | None = Field(None, max_length=100, description="Correo electrónico vinculado a la cuenta")
+
+    @property
+    def dato(self) -> str:
+        res = (self.correo or self.identificador or "").strip()
+        if not res:
+            raise ValueError("Debe ingresar un usuario o correo electrónico")
+        return res
+
+
+class SolicitarRecuperacionEntrada(BaseModel):
+    correo: str = Field(min_length=3, max_length=100, description="Correo electrónico vinculado a la cuenta")
+
+
+class ValidarTokenSalida(BaseModel):
+    valido: bool
+    nombre_usuario: str | None = None
+    nombre_completo: str | None = None
+    mensaje: str
+
+
+class RestablecerContrasenaEntrada(BaseModel):
+    token: str = Field(min_length=10, max_length=120, description="Token de recuperación recibido")
+    nueva: ContrasenaNueva
 
 
 class ActividadSalida(BaseModel):

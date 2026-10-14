@@ -61,3 +61,41 @@ def crear_token(id_usuario: int, rol: str, recordar: bool = False) -> tuple[str,
 def leer_token(token: str) -> dict:
     """Devuelve el contenido del token o lanza jwt.InvalidTokenError."""
     return jwt.decode(token, _secreto(), algorithms=[ALGORITMO], options={"require": ["sub", "exp"]})
+
+
+# ---- Bloqueo progresivo y recuperación de contraseña ------------------------
+MINUTOS_BLOQUEO = {
+    1: 5,   # 1er bloqueo (tras 3 intentos fallidos)
+    2: 15,  # 2do bloqueo
+    3: 30,  # 3er bloqueo
+}
+
+
+def duracion_bloqueo_minutos(nivel_bloqueo: int) -> int:
+    """Duración en minutos según el nivel de bloqueo progresivo (máx 60)."""
+    return MINUTOS_BLOQUEO.get(nivel_bloqueo, 60)
+
+
+def formatear_tiempo_restante(segundos_totales: int) -> str:
+    """Devuelve un texto legible para el usuario con el tiempo que debe esperar."""
+    if segundos_totales <= 0:
+        return "unos segundos"
+    minutos = segundos_totales // 60
+    segundos = segundos_totales % 60
+    if minutos > 0 and segundos > 0:
+        return f"{minutos} min y {segundos} s"
+    if minutos > 0:
+        return f"{minutos} minuto{'s' if minutos != 1 else ''}"
+    return f"{segundos} segundo{'s' if segundos != 1 else ''}"
+
+
+def hashear_token(token_plano: str) -> str:
+    """Calcula el hash SHA-256 de un token para guardarlo de forma segura en BD."""
+    import hashlib
+    return hashlib.sha256(token_plano.encode("utf-8")).hexdigest()
+
+
+def generar_token_recuperacion() -> tuple[str, str]:
+    """Genera un token criptográficamente seguro y devuelve (token_plano, token_hash)."""
+    token_plano = secrets.token_urlsafe(32)
+    return token_plano, hashear_token(token_plano)
