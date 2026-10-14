@@ -9,7 +9,7 @@ from sqlalchemy import Date, and_, cast, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.paquetes.personas.models import Administrativo, Persona
-from app.paquetes.seguridad.models import Bitacora, RateLimitIp, Rol, TokenRecuperacion, Usuario
+from app.paquetes.seguridad.models import Bitacora, Rol, TokenRecuperacion, Usuario
 from app.paquetes.seguridad.politicas import (
     ACCION_CAMBIO_PROPIO, ACCION_RESTABLECIDA, ACCION_SOLICITUD, ESPECIALIZACION,
 )
@@ -339,54 +339,3 @@ async def consumir_token_recuperacion(sesion: AsyncSession, id_recuperacion: int
         .where(TokenRecuperacion.id_recuperacion == id_recuperacion)
         .values(usado=True, usado_en=datetime.now(UTC))
     )
-
-
-async def verificar_rate_limit_ip(sesion: AsyncSession, ip: str) -> tuple[bool, int]:
-    """Retorna (bloqueado: bool, segundos_restantes: int)."""
-    if not ip:
-        return False, 0
-    registro = await sesion.get(RateLimitIp, ip)
-    if not registro or not registro.bloqueado_hasta:
-        return False, 0
-    ahora = datetime.now(UTC)
-    bloqueado_hasta = registro.bloqueado_hasta
-    if bloqueado_hasta.tzinfo is None:
-        bloqueado_hasta = bloqueado_hasta.replace(tzinfo=UTC)
-    if ahora < bloqueado_hasta:
-        return True, int((bloqueado_hasta - ahora).total_seconds())
-    return False, 0
-
-
-async def registrar_intento_ip(sesion: AsyncSession, ip: str, max_intentos: int = 15, minutos_bloqueo: int = 15):
-    """Protege contra ataques de fuerza bruta distribuidos o automatizados por IP."""
-    if not ip:
-        return
-    registro = await sesion.get(RateLimitIp, ip)
-    ahora = datetime.now(UTC)
-    if not registro:
-        registro = RateLimitIp(ip=ip, intentos=1, ultimo_intento=ahora)
-        sesion.add(registro)
-    else:
-        ultimo = registro.ultimo_intento
-        if ultimo.tzinfo is None:
-            ultimo = ultimo.replace(tzinfo=UTC)
-        if (ahora - ultimo).total_seconds() > 3600:
-            registro.intentos = 1
-            registro.bloqueado_hasta = None
-        else:
-            registro.intentos += 1
-        registro.ultimo_intento = ahora
-        if registro.intentos >= max_intentos:
-            from datetime import timedelta
-            registro.bloqueado_hasta = ahora + timedelta(minutes=minutos_bloqueo)
-    await sesion.flush()
-
-
-async def restablecer_intento_ip(sesion: AsyncSession, ip: str) -> None:
-    if not ip:
-        return
-    registro = await sesion.get(RateLimitIp, ip)
-    if registro:
-        registro.intentos = 0
-        registro.bloqueado_hasta = None
-        await sesion.flush()

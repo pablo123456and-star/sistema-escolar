@@ -54,15 +54,6 @@ class TokenRecuperacion(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
 
 
-class RateLimitIp(Base):
-    __tablename__ = "rate_limit_ip"
-
-    ip: Mapped[str] = mapped_column(String(45), primary_key=True)
-    intentos: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
-    bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    ultimo_intento: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
-
-
 class Bitacora(Base):
     __tablename__ = "bitacora"
 

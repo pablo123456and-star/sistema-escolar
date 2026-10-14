@@ -14,6 +14,11 @@ async def test_cu01_inicia_sesion_con_usuario_o_correo(cliente):
     assert datos["token"] and datos["usuario"]["rol"] == "administrador"
     assert datos["usuario"]["ultimo_acceso"] is not None
 
+    # También debe permitir iniciar sesión ingresando el correo electrónico
+    r_correo = await cliente.post("/seguridad/sesion", json={"identificador": "direccion@escuelamodelo.edu.bo", "contrasena": "Escuela2026"})
+    assert r_correo.status_code == 200
+    assert r_correo.json()["token"]
+
 
 async def test_cu01_mismo_mensaje_si_falla_usuario_o_contrasena(cliente):
     r1 = await cliente.post("/seguridad/sesion", json={"identificador": "direccion", "contrasena": "otra123"})

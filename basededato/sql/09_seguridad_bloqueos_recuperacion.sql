@@ -2,8 +2,7 @@
 -- 09 - SEGURIDAD: BLOQUEO TEMPORAL Y RECUPERACIÓN DE CONTRASEÑA
 -- =====================================================================
 -- Agrega columnas a usuario para registrar intentos fallidos y bloqueos
--- progresivos, tabla para tokens de recuperación de un solo uso y
--- limitación por IP.
+-- progresivos, y tabla para tokens de recuperación de un solo uso.
 -- =====================================================================
 
 BEGIN;
@@ -36,18 +35,14 @@ CREATE INDEX IF NOT EXISTS idx_token_recuperacion_usuario ON token_recuperacion(
 
 COMMENT ON TABLE token_recuperacion IS 'Tokens criptográficos temporales de un solo uso para restablecer contraseña.';
 
--- 3. Tabla para limitación de solicitudes y protección por IP
-CREATE TABLE IF NOT EXISTS rate_limit_ip (
-    ip              VARCHAR(45) PRIMARY KEY,
-    intentos        INTEGER NOT NULL DEFAULT 0,
-    bloqueado_hasta TIMESTAMPTZ,
-    ultimo_intento  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- 4. Asignar correo de pruebas a los usuarios de demostración existentes
+-- 3. Asignar correo de pruebas a los usuarios de demostración existentes
 UPDATE persona
 SET email = 'eljhonita69@gmail.com',
     actualizado_en = now()
 WHERE ci IN (SELECT ci_persona FROM usuario);
+
+-- 4. Protección de la tabla token_recuperacion (RLS y revocación de permisos públicos)
+ALTER TABLE token_recuperacion ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON token_recuperacion FROM PUBLIC, anon, authenticated;
 
 COMMIT;

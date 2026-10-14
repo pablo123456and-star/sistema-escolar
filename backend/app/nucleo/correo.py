@@ -8,8 +8,10 @@ Soporte dual:
   para facilitar pruebas locales sin requerir credenciales externas.
 """
 import asyncio
+import json
 import logging
 import smtplib
+import urllib.request
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -98,8 +100,33 @@ def _enviar_smtp_sincrono(destinatario: str, asunto: str, cuerpo_html: str, cuer
         raise ErrorNegocio("No se pudo enviar el correo de recuperación. Intente más tarde.", "error_correo") from exc
 
 
+def _enviar_brevo_sincrono(destinatario: str, nombre: str, asunto: str, cuerpo_html: str, cuerpo_texto: str) -> None:
+    """Envía el correo por la API HTTPS de Brevo (funciona en Railway sin plan Pro)."""
+    cfg = obtener_config()
+    datos = {
+        "sender": {"name": "U.E. Mariscal Sucre G", "email": cfg.SMTP_REMITENTE},
+        "to": [{"email": destinatario, "name": nombre}],
+        "subject": asunto,
+        "htmlContent": cuerpo_html,
+        "textContent": cuerpo_texto,
+    }
+    peticion = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(datos).encode("utf-8"),
+        headers={"api-key": cfg.BREVO_API_KEY, "Content-Type": "application/json", "Accept": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(peticion, timeout=15):
+            pass
+        logger.info("Correo enviado por Brevo a %s", destinatario)
+    except Exception as exc:
+        logger.error("Fallo al enviar correo por Brevo a %s: %s", destinatario, exc)
+        raise ErrorNegocio("No se pudo enviar el correo de recuperación. Intente más tarde.", "error_correo") from exc
+
+
 async def enviar_correo_recuperacion(destinatario: str, nombre: str, enlace: str, minutos: int = 15) -> None:
-    """Envía el correo de recuperación al destinatario usando SMTP o consola en local."""
+    """Envía el correo de recuperación al destinatario usando Brevo, SMTP o consola en local."""
     cfg = obtener_config()
     asunto = "Recuperación de contraseña — Unidad Educativa Mariscal Sucre G"
     cuerpo_texto = (
@@ -111,7 +138,10 @@ async def enviar_correo_recuperacion(destinatario: str, nombre: str, enlace: str
     )
     cuerpo_html = _construir_mensaje_html(nombre, enlace, minutos)
 
-    if cfg.SMTP_HOST and cfg.SMTP_USUARIO:
+    if cfg.BREVO_API_KEY:
+        # Envío por API HTTPS (producción en Railway)
+        await asyncio.to_thread(_enviar_brevo_sincrono, destinatario, nombre, asunto, cuerpo_html, cuerpo_texto)
+    elif cfg.SMTP_HOST and cfg.SMTP_USUARIO:
         # Envío real a través del servidor SMTP configurado
         await asyncio.to_thread(_enviar_smtp_sincrono, destinatario, asunto, cuerpo_html, cuerpo_texto)
     else:

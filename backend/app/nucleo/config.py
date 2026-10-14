@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USUARIO: str = ""
     SMTP_PASSWORD: str = ""
+    BREVO_API_KEY: str = ""  # Envío por API HTTPS (Railway bloquea SMTP en el plan Hobby)
     SMTP_REMITENTE: str = "noreply@mariscalsucreg.edu.bo"
     SMTP_USAR_TLS: bool = True
     CORREO_EN_CONSOLA: bool = True  # True para mostrar en logs/consola si falta SMTP

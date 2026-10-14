@@ -4,7 +4,7 @@ Paquete: seguridad
 
 Actores ........: Todos
 Rol del sistema : administrador, profesor, estudiante, tutor
-Tablas .........: usuario, rol, persona, token_recuperacion, rate_limit_ip, bitacora
+Tablas .........: usuario, rol, persona, token_recuperacion, bitacora
 Usa de la BD ...: Trigger de auditoría de usuario (registra el acceso al actualizar ultimo_acceso)
                   y fn_registrar_bitacora (solicitudes y restablecimiento de contraseña)
 
@@ -16,7 +16,6 @@ Reglas de negocio que implementa este caso de uso (backend):
       * Un inicio de sesión exitoso reinicia el contador de intentos y nivel de bloqueo.
       * Mensajes claros con tiempo restante cuando la cuenta está bloqueada temporalmente.
       * Respuestas genéricas cuando las credenciales no coinciden (no revela si existe el usuario).
-      * Limitación de solicitudes por IP para mitigar ataques masivos o distribuidos.
     - Autenticación:
       * Buscar por nombre_usuario o correo y verificar contra password_hash (bcrypt).
       * Rechazar cuentas inactivas o personas dadas de baja.
@@ -81,21 +80,11 @@ async def obtener_perfil(sesion: AsyncSession, id_usuario: int) -> PerfilSalida:
 
 
 async def iniciar_sesion(sesion: AsyncSession, datos: IniciarSesionEntrada, ip_cliente: str | None = None) -> SesionSalida:
-    # 1. Protección por IP (Rate Limiting)
-    if ip_cliente:
-        bloqueada_ip, segs_ip = await repo.verificar_rate_limit_ip(sesion, ip_cliente)
-        if bloqueada_ip:
-            tiempo_ip = formatear_tiempo_restante(segs_ip)
-            raise ErrorNegocio(
-                f"Demasiados intentos de acceso desde esta red. Por seguridad, intente en {tiempo_ip}.",
-                "ip_bloqueada",
-            )
-
     candidatos = await repo.buscar_para_login(sesion, datos.identificador)
     cuenta = candidatos[0] if len(candidatos) == 1 else None
     ahora = datetime.now(UTC)
 
-    # 2. Si la cuenta existe, verificar si está bajo bloqueo temporal por intentos fallidos
+    # 1. Si la cuenta existe, verificar si está bajo bloqueo temporal por intentos fallidos
     if cuenta:
         if cuenta.bloqueado_hasta:
             bh = cuenta.bloqueado_hasta
@@ -109,14 +98,10 @@ async def iniciar_sesion(sesion: AsyncSession, datos: IniciarSesionEntrada, ip_c
                     "cuenta_bloqueada",
                 )
 
-    # 3. Comprobación de contraseña
+    # 2. Comprobación de contraseña
     password_ok = verificar_contrasena(datos.contrasena, cuenta.password_hash if cuenta else None)
 
     if not password_ok:
-        # Registrar intento en IP
-        if ip_cliente:
-            await repo.registrar_intento_ip(sesion, ip_cliente)
-
         if cuenta:
             # Incrementar contador de intentos fallidos
             fallos = (cuenta.intentos_fallidos or 0) + 1
@@ -137,24 +122,19 @@ async def iniciar_sesion(sesion: AsyncSession, datos: IniciarSesionEntrada, ip_c
                     sesion, cuenta.id_usuario, None, cuenta.bloqueos_consecutivos or 0
                 )
                 await sesion.commit()
-        else:
-            if ip_cliente:
-                await sesion.commit()
         raise ErrorNegocio(MENSAJE_CREDENCIALES, "credenciales")
 
-    # 4. Contraseña correcta: verificar estado general de la cuenta y persona
+    # 3. Contraseña correcta: verificar estado general de la cuenta y persona
     if cuenta.estado_usuario != "activo" or cuenta.estado_persona != "activo":
         raise ErrorNegocio(
             "La cuenta está inactiva o bloqueada por la administración. Comuníquese con la dirección.",
             "cuenta_inactiva",
         )
 
-    # 5. Éxito: restablecer contadores de intentos fallidos y bloqueos
+    # 4. Éxito: restablecer contadores de intentos fallidos y bloqueos
     await repo.restablecer_intentos(sesion, cuenta.id_usuario)
-    if ip_cliente:
-        await repo.restablecer_intento_ip(sesion, ip_cliente)
 
-    # 6. Registrar acceso e identidad para bitácora
+    # 5. Registrar acceso e identidad para bitácora
     await identificar(sesion, cuenta.id_usuario)
     await sesion.execute(
         update(Usuario).where(Usuario.id_usuario == cuenta.id_usuario).values(ultimo_acceso=func.now())
@@ -178,18 +158,6 @@ async def solicitar_recuperacion(sesion: AsyncSession, correo_o_identificador: s
     """Procesa una solicitud de recuperación de contraseña de forma segura."""
     cfg = obtener_config()
     ahora = datetime.now(UTC)
-
-    # Rate limiting de solicitudes de recuperación por IP
-    if ip_cliente:
-        clave_ip = f"rec:{ip_cliente}"[:45]
-        bloqueada_ip, segs_ip = await repo.verificar_rate_limit_ip(sesion, clave_ip)
-        if bloqueada_ip:
-            tiempo_ip = formatear_tiempo_restante(segs_ip)
-            raise ErrorNegocio(
-                f"Demasiadas solicitudes de recuperación desde esta red. Por seguridad, intente en {tiempo_ip}.",
-                "ip_bloqueada",
-            )
-        await repo.registrar_intento_ip(sesion, clave_ip, max_intentos=15, minutos_bloqueo=15)
 
     ident = correo_o_identificador.strip()
     # Buscar cuentas asociadas
