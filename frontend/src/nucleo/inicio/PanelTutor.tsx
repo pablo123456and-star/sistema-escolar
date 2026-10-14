@@ -3,7 +3,7 @@
  * su promedio y calificaciones (CU23/CU24), asistencia (CU22), mensualidades (CU25),
  * próximas clases (CU20) y comunicados/citaciones (CU27).
  *
- * PROTOTIPO: usa datosEjemplo.ts hasta implementar esos casos de uso.
+ * PROTOTIPO: el horario ya es real (CU20); el resto usa datosEjemplo.ts hasta implementar esos casos de uso.
  */
 import { useState } from 'react'
 import { cn } from 'cn'
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { AvatarIniciales } from '@/componentes/comunes'
 import { bolivianos, fecha } from '@/lib/formato'
+import { useHorarioInicio, useOpcionesConsulta } from '@/paquetes/horarios/api'
 import { porcentajeAsistencia, promedioGeneral, proximaCuota, proximasClases } from './calculos'
 import {
   AvisoPrototipo,
@@ -34,13 +35,15 @@ import { HIJOS_TUTOR } from './datosEjemplo'
 export default function PanelTutor() {
   const [indice, setIndice] = useState(0)
   const e = HIJOS_TUTOR[indice]
+  const cursoHijo = useOpcionesConsulta().data?.estudiantes.find((h) => h.ci === e.ci)?.id_curso
+  const horario = useHorarioInicio(cursoHijo ? { id_curso: cursoHijo } : null)
   const cuota = proximaCuota(e.cuotas)
   const citaciones = e.comunicados.filter((c) => c.tipo === 'citacion').length
 
   return (
     <div className="space-y-6">
       <Bienvenida />
-      <AvisoPrototipo casos="CU09, CU20, CU22, CU24, CU25 y CU27" />
+      <AvisoPrototipo casos="CU09, CU22, CU24, CU25 y CU27" />
 
       <div>
         <h2 className="mb-2 text-sm font-medium text-slate-600">Mis estudiantes</h2>
@@ -100,8 +103,8 @@ export default function PanelTutor() {
         <Tarjeta titulo="Asistencia" icono={CalendarCheckIcon} enlace={{ texto: 'Historial', ruta: '/evaluacion/cu22' }}>
           <DetalleAsistencia asistencia={e.asistencia} />
         </Tarjeta>
-        <Tarjeta titulo="Próximas clases" icono={CalendarClockIcon} enlace={{ texto: 'Horario', ruta: '/horarios/cu20' }}>
-          <ListaClases clases={proximasClases(e.horario)} detalle="docente" />
+        <Tarjeta titulo="Próximas clases" icono={CalendarClockIcon} enlace={{ texto: 'Horario', ruta: '/horarios/consulta' }}>
+          <ListaClases clases={proximasClases(horario)} detalle="docente" />
         </Tarjeta>
         <Tarjeta titulo="Comunicados" icono={MegaphoneIcon} enlace={{ texto: 'Ver todos', ruta: '/administracion/cu27' }}>
           <ListaComunicados comunicados={e.comunicados} />

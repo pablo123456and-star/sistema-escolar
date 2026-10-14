@@ -3,7 +3,7 @@
  * asistencia (CU21) y registrar notas (CU23), pendientes, sus estudiantes, su horario
  * (CU20) y comunicados (CU27).
  *
- * PROTOTIPO: usa datosEjemplo.ts hasta implementar CU20, CU21, CU23 y CU27.
+ * PROTOTIPO: el horario ya es real (CU20); el resto usa datosEjemplo.ts hasta implementar CU21, CU23 y CU27.
  */
 import { Link } from 'react-router'
 import { cn } from 'cn'
@@ -21,6 +21,8 @@ import {
 import { AvatarIniciales } from '@/componentes/comunes'
 import { Button } from '@/componentes/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/componentes/ui/table'
+import { useSesion } from '@/nucleo/auth/contexto'
+import { useHorarioInicio } from '@/paquetes/horarios/api'
 import { proximasClases } from './calculos'
 import {
   AvisoPrototipo,
@@ -43,14 +45,15 @@ const TONO_PENDIENTE = {
 
 export default function PanelDocente() {
   const { asignaciones, pendientes, comunicados } = DOCENTE
-  const horario = asignaciones.flatMap((a) => a.horario)
+  const { usuario } = useSesion()
+  const horario = useHorarioInicio(usuario ? { ci_profesor: usuario.ci } : null)
   const totalEstudiantes = asignaciones.reduce((t, a) => t + a.estudiantes.length, 0)
   const clases = proximasClases(horario)
 
   return (
     <div className="space-y-6">
       <Bienvenida />
-      <AvisoPrototipo casos="CU20, CU21, CU23 y CU27" />
+      <AvisoPrototipo casos="CU21, CU23 y CU27" />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Indicador titulo="Cursos asignados" valor={asignaciones.length} detalle={asignaciones.map((a) => a.curso).join(', ')} icono={BookOpenIcon} tono="border-blue-100 bg-blue-50 text-blue-600" />
@@ -60,7 +63,7 @@ export default function PanelDocente() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <Tarjeta titulo="Próximas clases" icono={CalendarClockIcon} enlace={{ texto: 'Ver horarios', ruta: '/horarios/cu20' }}>
+        <Tarjeta titulo="Próximas clases" icono={CalendarClockIcon} enlace={{ texto: 'Ver horarios', ruta: '/horarios/consulta' }}>
           <ListaClases
             clases={clases}
             detalle="curso"

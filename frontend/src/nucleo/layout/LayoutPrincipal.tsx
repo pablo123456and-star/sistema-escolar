@@ -10,6 +10,7 @@ import { cn } from 'cn'
 import {
   BellIcon,
   CalendarCheckIcon,
+  CalendarCogIcon,
   CalendarDaysIcon,
   ChevronDownIcon,
   ClipboardCheckIcon,
@@ -26,6 +27,7 @@ import {
   ScrollTextIcon,
   ShieldCheckIcon,
   UserIcon,
+  UserPlusIcon,
   UsersIcon,
   UsersRoundIcon,
   WalletIcon,
@@ -66,21 +68,26 @@ const MENU: ItemMenu[] = [
   { ruta: '/academico/materias', texto: 'Materias y plan de estudios', icono: NotebookPenIcon, roles: ['administrador'] },
   // CU14 - Asignar profesor a materia/curso
   { ruta: '/academico/asignaciones', texto: 'Asignación de profesores', icono: UsersIcon, roles: ['administrador'] },
+  // CU16 - Inscribir estudiante en gestión académica
+  { ruta: '/academico/inscripciones', texto: 'Inscripciones', icono: UserPlusIcon, roles: ['administrador'] },
+  // CU19 - Generar horario y CU20 - Consultar horarios
+  { ruta: '/horarios/generar', texto: 'Generar horario', icono: CalendarCogIcon, roles: ['administrador'] },
+  { ruta: '/horarios/consulta', texto: 'Consultar horarios', icono: CalendarDaysIcon, roles: ['administrador'] },
   // Docente
-  { ruta: '/horarios/cu20', texto: 'Mis horarios', icono: CalendarDaysIcon, roles: ['profesor'] },
+  { ruta: '/horarios/consulta', texto: 'Mis horarios', icono: CalendarDaysIcon, roles: ['profesor'] },
   { ruta: '/evaluacion/cu21', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['profesor'] },
   { ruta: '/evaluacion/cu23', texto: 'Calificaciones', icono: NotebookPenIcon, roles: ['profesor'] },
   { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: GraduationCapIcon, roles: ['profesor'] },
   { ruta: '/personas/cu07', texto: 'Seguimiento', icono: HeartPulseIcon, roles: ['profesor'] },
   // Estudiante
-  { ruta: '/horarios/cu20', texto: 'Mi horario', icono: CalendarDaysIcon, roles: ['estudiante'] },
+  { ruta: '/horarios/consulta', texto: 'Mi horario', icono: CalendarDaysIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/cu23', texto: 'Mis calificaciones', icono: NotebookPenIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/cu24', texto: 'Boletín', icono: FileTextIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/cu22', texto: 'Mi asistencia', icono: CalendarCheckIcon, roles: ['estudiante'] },
   { ruta: '/academico/cu17', texto: 'Mis inscripciones', icono: HistoryIcon, roles: ['estudiante'] },
   // Padre/Tutor
   { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: UsersRoundIcon, roles: ['tutor'] },
-  { ruta: '/horarios/cu20', texto: 'Horarios', icono: CalendarDaysIcon, roles: ['tutor'] },
+  { ruta: '/horarios/consulta', texto: 'Horarios', icono: CalendarDaysIcon, roles: ['tutor'] },
   { ruta: '/evaluacion/cu24', texto: 'Boletín', icono: FileTextIcon, roles: ['tutor'] },
   { ruta: '/evaluacion/cu22', texto: 'Asistencia', icono: CalendarCheckIcon, roles: ['tutor'] },
   { ruta: '/academico/cu17', texto: 'Inscripciones', icono: HistoryIcon, roles: ['tutor'] },
@@ -117,7 +124,7 @@ export default function LayoutPrincipal() {
   }
 
   const menuLateral = (
-    <nav className="flex flex-col gap-1 px-3 py-4">
+    <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
       {items.map(({ ruta, texto, icono: Icono }) => (
         <NavLink
           key={ruta}
