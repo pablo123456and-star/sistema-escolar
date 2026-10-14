@@ -1,6 +1,7 @@
 """Pruebas del paquete seguridad: CU01 (sesión, bloqueo e intentos fallidos, recuperación por correo), CU02 (usuarios), CU03 (roles) y CU04 (bitácora)."""
 from datetime import UTC, datetime, timedelta
 from sqlalchemy import select, update
+from app.paquetes.personas.models import Persona
 from app.paquetes.seguridad.models import TokenRecuperacion, Usuario
 from app.nucleo.seguridad import hashear_token
 from tests.conftest import iniciar
@@ -14,7 +15,13 @@ async def test_cu01_inicia_sesion_con_usuario_o_correo(cliente):
     assert datos["token"] and datos["usuario"]["rol"] == "administrador"
     assert datos["usuario"]["ultimo_acceso"] is not None
 
-    # También debe permitir iniciar sesión ingresando el correo electrónico
+    # También debe permitir iniciar sesión ingresando el correo electrónico. El script 09 pone un
+    # mismo correo de pruebas a todos los usuarios, así que aquí se le da uno propio a direccion.
+    from app.nucleo import bd
+    async with bd._fabrica() as s:
+        ci = (await s.execute(select(Usuario.ci_persona).where(Usuario.nombre_usuario == "direccion"))).scalar_one()
+        await s.execute(update(Persona).where(Persona.ci == ci).values(email="direccion@escuelamodelo.edu.bo"))
+        await s.commit()
     r_correo = await cliente.post("/seguridad/sesion", json={"identificador": "direccion@escuelamodelo.edu.bo", "contrasena": "Escuela2026"})
     assert r_correo.status_code == 200
     assert r_correo.json()["token"]
@@ -161,6 +168,20 @@ async def test_cu01_recuperacion_por_correo_flujo_completo(cliente):
     # 10. La contraseña anterior ya no funciona
     r_antigua = await cliente.post("/seguridad/sesion", json={"identificador": "mquispe", "contrasena": "Escuela2026"})
     assert r_antigua.status_code == 400
+
+
+async def test_cu01_recuperar_contrasena_y_restablecer(cliente, admin):
+    # La solicitud queda también como pendiente para el administrador (campana / Usuarios)
+    r = await cliente.post("/seguridad/recuperar-contrasena", json={"correo": "rflores"})
+    assert r.status_code == 200
+    pendientes = (await cliente.get("/seguridad/usuarios/solicitudes-recuperacion", headers=admin)).json()
+    assert [p["nombre_usuario"] for p in pendientes] == ["rflores"]
+
+    r = await cliente.post("/seguridad/usuarios/4/restablecer-contrasena", headers=admin)
+    temporal = r.json()["contrasena_temporal"]
+    await iniciar(cliente, "rflores", temporal)
+    pendientes = (await cliente.get("/seguridad/usuarios/solicitudes-recuperacion", headers=admin)).json()
+    assert pendientes == []
 
 
 async def test_cu01_panel_inicio(cliente, admin, profesor):

@@ -43,6 +43,15 @@ WHERE ci IN (SELECT ci_persona FROM usuario);
 
 -- 4. Protección de la tabla token_recuperacion (RLS y revocación de permisos públicos)
 ALTER TABLE token_recuperacion ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON token_recuperacion FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON token_recuperacion FROM PUBLIC;
+
+-- Roles de la API de Supabase (en un PostgreSQL local no existen: se omite)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+        REVOKE ALL ON token_recuperacion FROM anon, authenticated;
+    END IF;
+END;
+$$;
 
 COMMIT;
