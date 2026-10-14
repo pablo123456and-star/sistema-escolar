@@ -57,3 +57,16 @@ El backend y el frontend se organizan igual: **6 paquetes**, cada uno con sus ar
 1. **Base de datos:** sigue `basededato/sql/LEEME.md`. Se crea una vez en tu PostgreSQL local, con datos y usuarios de prueba.
 2. **Backend:** sigue `backend/README.md` → queda en <http://localhost:8000/docs>.
 3. **Frontend:** sigue `frontend/README.md` → queda en <http://localhost:5173>.
+
+## Integrantes — Grupo #2
+
+**Docente:** Ing. Garzón Cuellar Angélica · **Materia:** Sistemas de Información I - SA
+
+| N.º | Apellidos y nombres |
+|---|---|
+| 1 | Ayala Ayala Edison |
+| 2 | Carrillo Callisaya Ronald |
+| 3 | Cervante Dueñas Juan Clider |
+| 4 | Cusi Mamani Benjamin |
+| 5 | Loza Flores Jhonatan |
+| 6 | Saldaña Zurita Pablo Andres |
