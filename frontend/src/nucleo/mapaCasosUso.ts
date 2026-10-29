@@ -33,7 +33,7 @@ export const PAQUETES: Paquete[] = [
     paquete: 'academico',
     titulo: 'Académico: estructura, gestión e inscripciones',
     casos: [
-      { codigo: 'CU12', nombre: 'Gestionar niveles educativos y cursos', ruta: '/academico/cu12' },
+      { codigo: 'CU12', nombre: 'Gestionar niveles educativos y cursos', ruta: '/academico/niveles-cursos' },
       { codigo: 'CU13', nombre: 'Gestionar materias y asignarlas a cursos', ruta: '/academico/materias' },
       { codigo: 'CU14', nombre: 'Asignar profesor a materia/curso', ruta: '/academico/asignaciones' },
       { codigo: 'CU15', nombre: 'Gestionar gestión académica (año lectivo)', ruta: '/academico/cu15' },

@@ -391,3 +391,66 @@ async def inscribir_estudiante(datos: InscripcionCrear, _: Administrador, sesion
             summary="CU16 - Emitir boleta de inscripción")
 async def boleta_inscripcion(_: Administrador, sesion: Sesion, id_inscripcion: int):
     return await cu16.emitir_boleta(sesion, id_inscripcion)
+
+# ============================================================
+# CU12 - GESTIONAR NIVELES EDUCATIVOS Y CURSOS
+# ============================================================
+
+from app.paquetes.academico.casos_uso import cu12_gestionar_niveles_cursos as cu12
+from app.paquetes.academico.schemas import (
+    CursoActualizar, CursoCrear, CursoSalida, EstructuraSalida, GradoActualizar, GradoCrear, GradoSalida,
+    NivelEducativoSalida, NivelEntrada,
+)
+
+
+@router.get("/estructura", response_model=EstructuraSalida,
+            summary="CU12 - Consultar niveles, grados y paralelos con sus inscritos")
+async def consultar_estructura(_: Administrador, sesion: Sesion):
+    return await cu12.estructura(sesion)
+
+
+@router.post("/niveles", response_model=NivelEducativoSalida, status_code=status.HTTP_201_CREATED,
+             summary="CU12 - Registrar nivel educativo")
+async def registrar_nivel(datos: NivelEntrada, _: Administrador, sesion: Sesion):
+    return await cu12.registrar_nivel(sesion, datos)
+
+
+@router.patch("/niveles/{id_nivel}", response_model=NivelEducativoSalida, summary="CU12 - Renombrar nivel educativo")
+async def actualizar_nivel(datos: NivelEntrada, _: Administrador, sesion: Sesion, id_nivel: int):
+    return await cu12.actualizar_nivel(sesion, id_nivel, datos)
+
+
+@router.delete("/niveles/{id_nivel}", status_code=status.HTTP_204_NO_CONTENT, summary="CU12 - Eliminar nivel educativo")
+async def eliminar_nivel(_: Administrador, sesion: Sesion, id_nivel: int):
+    await cu12.eliminar_nivel(sesion, id_nivel)
+
+
+@router.post("/grados", response_model=GradoSalida, status_code=status.HTTP_201_CREATED, summary="CU12 - Registrar grado")
+async def registrar_grado(datos: GradoCrear, _: Administrador, sesion: Sesion):
+    return await cu12.registrar_grado(sesion, datos)
+
+
+@router.patch("/grados/{id_grado}", response_model=GradoSalida, summary="CU12 - Modificar grado")
+async def actualizar_grado(datos: GradoActualizar, _: Administrador, sesion: Sesion, id_grado: int):
+    return await cu12.actualizar_grado(sesion, id_grado, datos)
+
+
+@router.delete("/grados/{id_grado}", status_code=status.HTTP_204_NO_CONTENT, summary="CU12 - Eliminar grado")
+async def eliminar_grado(_: Administrador, sesion: Sesion, id_grado: int):
+    await cu12.eliminar_grado(sesion, id_grado)
+
+
+@router.post("/cursos", response_model=CursoSalida, status_code=status.HTTP_201_CREATED,
+             summary="CU12 - Registrar paralelo")
+async def registrar_curso(datos: CursoCrear, _: Administrador, sesion: Sesion):
+    return await cu12.registrar_curso(sesion, datos)
+
+
+@router.patch("/cursos/{id_curso}", response_model=CursoSalida, summary="CU12 - Modificar paralelo o cupo")
+async def actualizar_curso(datos: CursoActualizar, _: Administrador, sesion: Sesion, id_curso: int):
+    return await cu12.actualizar_curso(sesion, id_curso, datos)
+
+
+@router.delete("/cursos/{id_curso}", status_code=status.HTTP_204_NO_CONTENT, summary="CU12 - Eliminar paralelo")
+async def eliminar_curso(_: Administrador, sesion: Sesion, id_curso: int):
+    await cu12.eliminar_curso(sesion, id_curso)

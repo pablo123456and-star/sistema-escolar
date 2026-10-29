@@ -356,3 +356,114 @@ class BoletaSalida(BaseModel):
     nivel: str
     materias: list[MateriaBoletaSalida]
     horario: list[BloqueBoletaSalida]
+
+# ============================================================
+# CU12 - GESTIONAR NIVELES EDUCATIVOS Y CURSOS
+# ============================================================
+
+
+def _limpiar_texto(valor):
+    """Quita espacios repetidos y en los extremos."""
+    return " ".join(valor.split()) if isinstance(valor, str) else valor
+
+
+def _limpiar_paralelo(valor):
+    """El paralelo se guarda sin espacios y en mayúsculas ("a" -> "A")."""
+    return valor.strip().upper() if isinstance(valor, str) else valor
+
+
+class NivelEntrada(BaseModel):
+    """Datos para registrar o renombrar un nivel educativo."""
+
+    nombre_nivel: str = Field(min_length=1, max_length=50)
+
+    limpiar_nombre = field_validator("nombre_nivel", mode="before")(_limpiar_texto)
+
+
+class GradoCrear(BaseModel):
+    """Datos para registrar un grado dentro de un nivel."""
+
+    id_nivel: int = Field(gt=0)
+    nombre_grado: str = Field(min_length=1, max_length=50)
+    orden_grado: int = Field(gt=0, le=99)
+
+    limpiar_nombre = field_validator("nombre_grado", mode="before")(_limpiar_texto)
+
+
+class GradoActualizar(BaseModel):
+    """Datos que pueden modificarse de un grado (el nivel no cambia)."""
+
+    nombre_grado: str | None = Field(default=None, min_length=1, max_length=50)
+    orden_grado: int | None = Field(default=None, gt=0, le=99)
+
+    limpiar_nombre = field_validator("nombre_grado", mode="before")(_limpiar_texto)
+
+    @model_validator(mode="after")
+    def validar_cambios(self):
+        if self.nombre_grado is None and self.orden_grado is None:
+            raise ValueError("Debe indicar el nombre o el orden del grado.")
+        return self
+
+
+class CursoCrear(BaseModel):
+    """Datos para registrar un paralelo de un grado."""
+
+    id_grado: int = Field(gt=0)
+    paralelo: str = Field(min_length=1, max_length=5, pattern=r"^[A-Z0-9]+$")
+    cupo_maximo: int = Field(gt=0, le=100)
+
+    limpiar_paralelo = field_validator("paralelo", mode="before")(_limpiar_paralelo)
+
+
+class CursoActualizar(BaseModel):
+    """Datos que pueden modificarse de un paralelo (el grado no cambia)."""
+
+    paralelo: str | None = Field(default=None, min_length=1, max_length=5, pattern=r"^[A-Z0-9]+$")
+    cupo_maximo: int | None = Field(default=None, gt=0, le=100)
+
+    limpiar_paralelo = field_validator("paralelo", mode="before")(_limpiar_paralelo)
+
+    @model_validator(mode="after")
+    def validar_cambios(self):
+        if self.paralelo is None and self.cupo_maximo is None:
+            raise ValueError("Debe indicar el paralelo o el cupo.")
+        return self
+
+
+class CursoSalida(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_curso: int
+    paralelo: str
+    cupo_maximo: int
+    id_grado_curso: int
+
+
+class CursoEstructuraSalida(BaseModel):
+    """Paralelo con sus inscritos activos en la gestión abierta."""
+
+    id_curso: int
+    paralelo: str
+    cupo_maximo: int
+    inscritos: int
+
+
+class GradoEstructuraSalida(BaseModel):
+    id_grado: int
+    nombre_grado: str
+    orden_grado: int
+    materias: int
+    cursos: list[CursoEstructuraSalida]
+
+
+class NivelEstructuraSalida(BaseModel):
+    id_nivel: int
+    nombre_nivel: str
+    grados: list[GradoEstructuraSalida]
+
+
+class EstructuraSalida(BaseModel):
+    """Niveles -> grados -> paralelos. Los inscritos son de la gestión abierta (si hay)."""
+
+    gestion: int | None
+    niveles: list[NivelEstructuraSalida]

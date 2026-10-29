@@ -14,7 +14,7 @@ const para = (roles: Rol[], elemento: ReactNode) => <RutaProtegida roles={roles}
 const soloAdministrador = (elemento: ReactNode) => para(['administrador'], elemento)
 
 export const rutasAcademico: RouteObject[] = [
-  { path: 'academico/cu12', element: soloAdministrador(<CU12GestionarNivelesCursos />) },
+  { path: 'academico/niveles-cursos', element: soloAdministrador(<CU12GestionarNivelesCursos />) },
   { path: 'academico/materias', element: soloAdministrador(<CU13GestionarMaterias />) },
   { path: 'academico/asignaciones', element: soloAdministrador(<CU14AsignarProfesor />) },
   { path: 'academico/cu15', element: soloAdministrador(<CU15GestionarGestionAcademica />) },
