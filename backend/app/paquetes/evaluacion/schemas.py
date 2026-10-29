@@ -1,5 +1,88 @@
 """
 DTO de entrada y salida (Pydantic) del paquete evaluacion (compartido).
-
-PENDIENTE.
 """
+# ============================================================
+# CU21 - REGISTRAR ASISTENCIA DE ESTUDIANTES
+# ============================================================
+
+from datetime import date
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+EstadoAsistencia = Literal["presente", "ausente", "tardanza", "justificado"]
+
+
+class ClaseAsistenciaSalida(BaseModel):
+    """Asignación (materia + curso + profesor) en la que se toma asistencia."""
+
+    id_asignacion: int
+    id_curso: int
+    curso: str
+    materia: str
+    ci_profesor: str
+    profesor: str
+    dias: list[str]            # días de clase según el horario (CU19)
+    registrada_hoy: bool
+
+
+class ClasesAsistenciaSalida(BaseModel):
+    """Clases que el usuario puede registrar en la gestión abierta (profesor: las suyas)."""
+
+    gestion: int | None
+    fecha_inicio: date | None  # primer día de la gestión: no se registra antes
+    hoy: date                  # hora de Bolivia
+    clases: list[ClaseAsistenciaSalida]
+
+
+class EstudianteAsistenciaSalida(BaseModel):
+    ci: str
+    nombre_persona: str
+    apellidos: str
+    estado: EstadoAsistencia | None   # None = aún sin registrar ese día
+    observacion: str | None
+
+
+class ListaAsistenciaSalida(BaseModel):
+    """Lista de la clase en una fecha, con lo ya registrado (si existe)."""
+
+    clase: ClaseAsistenciaSalida
+    fecha: date
+    registrada: bool
+    dia_con_clase: bool        # False: ese día no figura en el horario (solo aviso)
+    periodo: str | None
+    editable: bool             # False: periodo cerrado y el usuario no es administrador
+    motivo_no_editable: str | None
+    estudiantes: list[EstudianteAsistenciaSalida]
+
+
+class RegistroAsistenciaEntrada(BaseModel):
+    ci_estudiante: str = Field(min_length=1, max_length=20)
+    estado: EstadoAsistencia
+    observacion: str | None = Field(default=None, max_length=300)
+
+    @field_validator("ci_estudiante", mode="before")
+    @classmethod
+    def limpiar_ci(cls, valor):
+        return valor.strip() if isinstance(valor, str) else valor
+
+    @field_validator("observacion", mode="before")
+    @classmethod
+    def limpiar_observacion(cls, valor):
+        if isinstance(valor, str):
+            return " ".join(valor.split()) or None
+        return valor
+
+
+class AsistenciaGuardar(BaseModel):
+    """Asistencia de toda la clase en una fecha (se guarda en una sola operación)."""
+
+    fecha: date
+    registros: list[RegistroAsistenciaEntrada] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def sin_repetidos(self):
+        cis = [r.ci_estudiante for r in self.registros]
+        if len(cis) != len(set(cis)):
+            raise ValueError("Un estudiante aparece más de una vez en la lista.")
+        return self

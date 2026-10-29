@@ -187,7 +187,7 @@ export const DOCENTE = {
     {
       titulo: 'Asistencia sin registrar',
       detalle: 'Matemática · 1ro A Secundaria · lunes 28/09',
-      ruta: '/evaluacion/cu21',
+      ruta: '/evaluacion/asistencia',
       tono: 'rojo',
     },
     {

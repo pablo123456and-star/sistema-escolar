@@ -70,7 +70,7 @@ export default function PanelDocente() {
             acciones={() => (
               <>
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/evaluacion/cu21">
+                  <Link to="/evaluacion/asistencia">
                     <ClipboardCheckIcon /> Asistencia
                   </Link>
                 </Button>
