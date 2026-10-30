@@ -76,9 +76,11 @@ const MENU: ItemMenu[] = [
   // CU19 - Generar horario y CU20 - Consultar horarios
   { ruta: '/horarios/generar', texto: 'Generar horario', icono: CalendarCogIcon, roles: ['administrador'] },
   { ruta: '/horarios/consulta', texto: 'Consultar horarios', icono: CalendarDaysIcon, roles: ['administrador'] },
+  // CU21 - Registrar asistencia (el administrador puede registrar o corregir cualquier clase)
+  { ruta: '/evaluacion/asistencia', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['administrador'] },
   // Docente
   { ruta: '/horarios/consulta', texto: 'Mis horarios', icono: CalendarDaysIcon, roles: ['profesor'] },
-  { ruta: '/evaluacion/cu21', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['profesor'] },
+  { ruta: '/evaluacion/asistencia', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['profesor'] },
   { ruta: '/evaluacion/cu23', texto: 'Calificaciones', icono: NotebookPenIcon, roles: ['profesor'] },
   { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: GraduationCapIcon, roles: ['profesor'] },
   { ruta: '/personas/cu07', texto: 'Seguimiento', icono: HeartPulseIcon, roles: ['profesor'] },

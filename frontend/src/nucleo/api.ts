@@ -27,7 +27,7 @@ export class ErrorApi extends Error {
 type Parametros = Record<string, string | number | boolean | null | undefined>
 
 type Opciones = {
-  metodo?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+  metodo?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   cuerpo?: unknown
   params?: Parametros
 }

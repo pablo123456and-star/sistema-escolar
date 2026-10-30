@@ -54,7 +54,7 @@ export const PAQUETES: Paquete[] = [
     paquete: 'evaluacion',
     titulo: 'Evaluación: asistencia, calificaciones y boletines',
     casos: [
-      { codigo: 'CU21', nombre: 'Registrar asistencia de estudiantes', ruta: '/evaluacion/cu21' },
+      { codigo: 'CU21', nombre: 'Registrar asistencia de estudiantes', ruta: '/evaluacion/asistencia' },
       { codigo: 'CU22', nombre: 'Consultar historial de asistencia', ruta: '/evaluacion/cu22' },
       { codigo: 'CU23', nombre: 'Registrar calificaciones y evaluaciones (incluye autoevaluación y cierre de periodo)', ruta: '/evaluacion/cu23' },
       { codigo: 'CU24', nombre: 'Generar y consultar boletín/libreta (incluye centralizador)', ruta: '/evaluacion/cu24' },
