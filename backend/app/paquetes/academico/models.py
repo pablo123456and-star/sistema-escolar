@@ -4,8 +4,8 @@ Modelos SQLAlchemy (ORM) del paquete academico (compartido).
 Tablas (lectura y escritura): nivel_educativo, grado, curso, materia, materia_grado, asignacion_profesor_clase, gestion, periodo, dimension_evaluacion, inscripcion.
 Vistas (solo lectura): v_curso.
 
-Implementados por ahora: gestion, curso e inscripcion (los usa el CU06 para
-inscribir al estudiante en el mismo paso). El resto se agrega con los CU12-CU17.
+Gestion, curso e inscripcion los usa también el CU06 para inscribir al
+estudiante en el mismo paso. Nivel, grado y curso los administra el CU12.
 """
 from datetime import date, datetime
 from decimal import Decimal
@@ -33,7 +33,7 @@ class Curso(Base):
     id_curso: Mapped[int] = mapped_column(Integer, primary_key=True)
     paralelo: Mapped[str] = mapped_column(String(5))
     cupo_maximo: Mapped[int]
-    id_grado_curso: Mapped[int]   # FK a grado (se mapea con el CU12)
+    id_grado_curso: Mapped[int] = mapped_column(ForeignKey("grado.id_grado"))
 
 
 class Inscripcion(Base):

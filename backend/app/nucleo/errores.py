@@ -54,6 +54,11 @@ MENSAJES_RESTRICCION = {
     "uq_tutor_principal": "El estudiante ya tiene un tutor principal.",
     "inscripcion_ci_estudiante_inscripcion_id_gestion_inscripcio_key": "El estudiante ya está inscrito en esa gestión.",
     "rol_nombre_rol_check": "Los roles del sistema son fijos: administrador, profesor, estudiante y tutor.",
+    "nivel_educativo_nombre_nivel_key": "Ya existe un nivel educativo con ese nombre.",
+    "grado_id_nivel_educativo_grado_nombre_grado_key": "El nivel ya tiene un grado con ese nombre.",
+    "grado_id_nivel_educativo_grado_orden_grado_key": "El nivel ya tiene un grado con ese orden.",
+    "curso_id_grado_curso_paralelo_key": "El grado ya tiene ese paralelo.",
+    "curso_cupo_maximo_check": "El cupo del curso debe ser mayor a 0.",
 }
 
 

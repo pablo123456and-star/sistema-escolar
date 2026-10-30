@@ -293,3 +293,45 @@ export type Boleta = {
   materias: MateriaBoleta[]
   horario: BloqueBoleta[]
 }
+
+// ============================================================
+// CU12 - GESTIONAR NIVELES EDUCATIVOS Y CURSOS
+// ============================================================
+
+export type CursoEstructura = { id_curso: number; paralelo: string; cupo_maximo: number; inscritos: number }
+
+export type GradoEstructura = {
+  id_grado: number
+  nombre_grado: string
+  orden_grado: number
+  materias: number
+  cursos: CursoEstructura[]
+}
+
+export type NivelEstructura = { id_nivel: number; nombre_nivel: string; grados: GradoEstructura[] }
+
+/** Niveles -> grados -> paralelos. Los inscritos son de la gestión abierta (null si no hay). */
+export type Estructura = { gestion: number | null; niveles: NivelEstructura[] }
+
+export const esquemaNivel = z.object({
+  nombre_nivel: z.string().trim().min(1, 'Ingrese el nombre del nivel').max(50, 'Máximo 50 caracteres'),
+})
+export type DatosNivel = z.infer<typeof esquemaNivel>
+
+export const esquemaGrado = z.object({
+  nombre_grado: z.string().trim().min(1, 'Ingrese el nombre del grado').max(50, 'Máximo 50 caracteres'),
+  orden_grado: z.number('Ingrese el orden').int('Debe ser un número entero').min(1, 'Mínimo 1').max(99, 'Máximo 99'),
+})
+export type DatosGrado = z.infer<typeof esquemaGrado>
+
+export const esquemaCurso = z.object({
+  paralelo: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(1, 'Ingrese el paralelo')
+    .max(5, 'Máximo 5 caracteres')
+    .regex(/^[A-Z0-9]+$/, 'Solo letras y números (ej. A, B, C)'),
+  cupo_maximo: z.number('Ingrese el cupo').int('Debe ser un número entero').min(1, 'Mínimo 1').max(100, 'Máximo 100'),
+})
+export type DatosCurso = z.infer<typeof esquemaCurso>

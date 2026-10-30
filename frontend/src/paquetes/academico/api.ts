@@ -35,6 +35,11 @@ import type {
   Boleta,
   DatosInscripcion,
   EstudianteInscripcion,
+  //CU12 - Gestionar niveles educativos y cursos
+  DatosCurso,
+  DatosGrado,
+  DatosNivel,
+  Estructura,
 } from './schemas'
 
 
@@ -428,3 +433,48 @@ export function useInscribir() {
     onSuccess: () => cliente.invalidateQueries({ predicate: (q) => ['academico', 'personas'].includes(String(q.queryKey[0])) }),
   })
 }
+
+// ============================================================
+// CU12 - GESTIONAR NIVELES EDUCATIVOS Y CURSOS
+// ============================================================
+
+export function useEstructura() {
+  return useQuery({
+    queryKey: ['academico', 'estructura'],
+    queryFn: () => api<Estructura>(`${RUTA_ACADEMICO}/estructura`),
+  })
+}
+
+/** Cambiar niveles, grados o paralelos afecta los selectores de otros paquetes (CU06, CU19, CU20...). */
+function useMutacionEstructura<T>(mutationFn: (datos: T) => Promise<unknown>) {
+  const cliente = useQueryClient()
+  return useMutation({ mutationFn, onSuccess: () => cliente.invalidateQueries() })
+}
+
+export const useGuardarNivel = () =>
+  useMutacionEstructura(({ id, datos }: { id?: number; datos: DatosNivel }) =>
+    api(id ? `${RUTA_ACADEMICO}/niveles/${id}` : `${RUTA_ACADEMICO}/niveles`, { metodo: id ? 'PATCH' : 'POST', cuerpo: datos }),
+  )
+
+export const useGuardarGrado = () =>
+  useMutacionEstructura(({ id, id_nivel, datos }: { id?: number; id_nivel: number; datos: DatosGrado }) =>
+    api(id ? `${RUTA_ACADEMICO}/grados/${id}` : `${RUTA_ACADEMICO}/grados`, {
+      metodo: id ? 'PATCH' : 'POST',
+      cuerpo: id ? datos : { ...datos, id_nivel },
+    }),
+  )
+
+export const useGuardarCurso = () =>
+  useMutacionEstructura(({ id, id_grado, datos }: { id?: number; id_grado: number; datos: DatosCurso }) =>
+    api(id ? `${RUTA_ACADEMICO}/cursos/${id}` : `${RUTA_ACADEMICO}/cursos`, {
+      metodo: id ? 'PATCH' : 'POST',
+      cuerpo: id ? datos : { ...datos, id_grado },
+    }),
+  )
+
+export type ElementoEstructura = 'niveles' | 'grados' | 'cursos'
+
+export const useEliminarEstructura = () =>
+  useMutacionEstructura(({ tipo, id }: { tipo: ElementoEstructura; id: number }) =>
+    api<void>(`${RUTA_ACADEMICO}/${tipo}/${id}`, { metodo: 'DELETE' }),
+  )

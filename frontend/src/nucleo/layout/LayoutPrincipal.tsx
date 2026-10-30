@@ -19,6 +19,7 @@ import {
   HeartPulseIcon,
   HistoryIcon,
   HouseIcon,
+  LayersIcon,
   LogOutIcon,
   MegaphoneIcon,
   MenuIcon,
@@ -64,6 +65,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/personas/tutores', texto: 'Padres y tutores', icono: UsersRoundIcon, roles: ['administrador'] },
   // CU10 - Registrar docente
   { ruta: '/personas/docentes', texto: 'Docentes', icono: PresentationIcon, roles: ['administrador'] },
+  // CU12 - Gestionar niveles educativos y cursos
+  { ruta: '/academico/niveles-cursos', texto: 'Niveles y cursos', icono: LayersIcon, roles: ['administrador'] },
   // CU13 - Gestionar materias y plan de estudios
   { ruta: '/academico/materias', texto: 'Materias y plan de estudios', icono: NotebookPenIcon, roles: ['administrador'] },
   // CU14 - Asignar profesor a materia/curso

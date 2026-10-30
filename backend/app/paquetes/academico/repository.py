@@ -752,3 +752,107 @@ async def horario_boleta_cu16(sesion: AsyncSession, id_curso: int, id_gestion: i
             {"c": id_curso, "g": id_gestion},
         )
     ).all()
+
+# ============================================================
+# CU12 - GESTIONAR NIVELES EDUCATIVOS Y CURSOS
+# ============================================================
+
+from app.paquetes.academico.models import Curso
+
+
+async def grados_estructura_cu12(sesion: AsyncSession):
+    """Grados con la cantidad de materias de su plan de estudios."""
+    return (
+        await sesion.execute(
+            text("""SELECT g.id_grado, g.nombre_grado, g.orden_grado, g.id_nivel_educativo_grado AS id_nivel,
+                           (SELECT count(*) FROM materia_grado mg WHERE mg.id_grado_mg = g.id_grado) AS materias
+                      FROM grado g
+                     ORDER BY g.id_nivel_educativo_grado, g.orden_grado""")
+        )
+    ).all()
+
+
+async def cursos_estructura_cu12(sesion: AsyncSession, id_gestion: int | None):
+    """Paralelos con sus inscripciones activas en la gestión indicada (0 si no hay gestión abierta)."""
+    return (
+        await sesion.execute(
+            text("""SELECT c.id_curso, c.paralelo, c.cupo_maximo, c.id_grado_curso AS id_grado,
+                           (SELECT count(*) FROM inscripcion i
+                             WHERE i.id_curso_inscripcion = c.id_curso
+                               AND i.id_gestion_inscripcion = :g
+                               AND i.estado_inscripcion = 'activa') AS inscritos
+                      FROM curso c
+                     ORDER BY c.id_grado_curso, c.paralelo"""),
+            {"g": id_gestion},
+        )
+    ).all()
+
+
+async def buscar_nivel_cu12(sesion: AsyncSession, nombre: str, id_excluir: int | None = None):
+    consulta = select(NivelEducativo).where(func.lower(NivelEducativo.nombre_nivel) == nombre.lower())
+    if id_excluir is not None:
+        consulta = consulta.where(NivelEducativo.id_nivel != id_excluir)
+    return await sesion.scalar(consulta)
+
+
+async def buscar_grado_cu12(sesion: AsyncSession, id_nivel: int, *, nombre: str | None = None,
+                            orden: int | None = None, id_excluir: int | None = None):
+    """Grado del mismo nivel con ese nombre (sin distinguir mayúsculas) o con ese orden."""
+    consulta = select(Grado).where(Grado.id_nivel_educativo_grado == id_nivel)
+    if nombre is not None:
+        consulta = consulta.where(func.lower(Grado.nombre_grado) == nombre.lower())
+    if orden is not None:
+        consulta = consulta.where(Grado.orden_grado == orden)
+    if id_excluir is not None:
+        consulta = consulta.where(Grado.id_grado != id_excluir)
+    return await sesion.scalar(consulta.limit(1))
+
+
+async def buscar_curso_cu12(sesion: AsyncSession, id_grado: int, paralelo: str, id_excluir: int | None = None):
+    consulta = select(Curso).where(Curso.id_grado_curso == id_grado, Curso.paralelo == paralelo)
+    if id_excluir is not None:
+        consulta = consulta.where(Curso.id_curso != id_excluir)
+    return await sesion.scalar(consulta)
+
+
+async def inscritos_activos_cu12(sesion: AsyncSession, id_curso: int, id_gestion: int) -> int:
+    return await sesion.scalar(
+        text("""SELECT count(*) FROM inscripcion
+                 WHERE id_curso_inscripcion = :c AND id_gestion_inscripcion = :g
+                   AND estado_inscripcion = 'activa'"""),
+        {"c": id_curso, "g": id_gestion},
+    ) or 0
+
+
+async def uso_nivel_cu12(sesion: AsyncSession, id_nivel: int):
+    """Registros que dependen del nivel: grados y aranceles."""
+    return (
+        await sesion.execute(
+            text("""SELECT (SELECT count(*) FROM grado   WHERE id_nivel_educativo_grado = :n) AS grados,
+                           (SELECT count(*) FROM arancel WHERE id_nivel_arancel = :n)         AS aranceles"""),
+            {"n": id_nivel},
+        )
+    ).one()
+
+
+async def uso_grado_cu12(sesion: AsyncSession, id_grado: int):
+    """Registros que dependen del grado: paralelos y materias del plan de estudios."""
+    return (
+        await sesion.execute(
+            text("""SELECT (SELECT count(*) FROM curso         WHERE id_grado_curso = :g) AS cursos,
+                           (SELECT count(*) FROM materia_grado WHERE id_grado_mg = :g)    AS materias"""),
+            {"g": id_grado},
+        )
+    ).one()
+
+
+async def uso_curso_cu12(sesion: AsyncSession, id_curso: int):
+    """Registros que dependen del paralelo: inscripciones, asignaciones de profesores y comunicados."""
+    return (
+        await sesion.execute(
+            text("""SELECT (SELECT count(*) FROM inscripcion               WHERE id_curso_inscripcion = :c) AS inscripciones,
+                           (SELECT count(*) FROM asignacion_profesor_clase WHERE id_curso_asignacion = :c)  AS asignaciones,
+                           (SELECT count(*) FROM comunicado                WHERE id_curso_comunicado = :c)  AS comunicados"""),
+            {"c": id_curso},
+        )
+    ).one()
