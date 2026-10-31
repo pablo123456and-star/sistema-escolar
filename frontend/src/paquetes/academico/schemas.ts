@@ -335,3 +335,91 @@ export const esquemaCurso = z.object({
   cupo_maximo: z.number('Ingrese el cupo').int('Debe ser un número entero').min(1, 'Mínimo 1').max(100, 'Máximo 100'),
 })
 export type DatosCurso = z.infer<typeof esquemaCurso>
+
+
+// ============================================================
+// CU15 - GESTIONAR GESTIÓN ACADÉMICA (AÑO LECTIVO)
+// ============================================================
+
+/** Los montos y notas (Decimal) llegan del backend como texto, p. ej. "51.00". */
+export type Gestion = {
+  id_gestion: number
+  anio: number
+  fecha_inicio_g: string
+  fecha_final_g: string
+  nota_minima_aprobacion: string
+  estado_gestion: 'abierta' | 'cerrada'
+  periodos: number
+  inscritos: number
+}
+
+export type Periodo = {
+  id_periodo: number
+  nombre_periodo: string
+  tipo: 'trimestre' | 'bimestre' | 'semestre' | null
+  fecha_inicio_p: string
+  fecha_final_p: string
+  estado_periodo: 'abierto' | 'cerrado'
+  observaciones_periodo: string | null
+  id_gestion_periodo: number
+}
+
+export type Dimension = {
+  id_dimension: number
+  nombre_dimension: string
+  puntaje_maximo: string
+  es_autoevaluacion: boolean
+  orden_dimension: number
+}
+
+export type Dimensiones = { dimensiones: Dimension[]; suma_puntajes: string; completa: boolean }
+
+export type ResumenGestion = {
+  id_gestion: number
+  anio: number
+  inscritos_activos: number
+  retirados: number
+  finalizados: number
+  promedio_general: string | null
+  total_cobrado: string
+  total_vencido: string
+}
+
+export type CierreGestion = { id_gestion: number; promovidos: number; reprobados: number }
+
+export const esquemaGestion = z
+  .object({
+    anio: z.number('Ingrese el año').int('Debe ser un número entero').min(2000, 'Año no válido').max(2100, 'Año no válido'),
+    fecha_inicio_g: z.string().min(1, 'Ingrese la fecha de inicio'),
+    fecha_final_g: z.string().min(1, 'Ingrese la fecha final'),
+    nota_minima_aprobacion: z.number('Ingrese la nota mínima').min(0, 'Mínimo 0').max(100, 'Máximo 100'),
+  })
+  .refine((d) => !d.fecha_inicio_g || !d.fecha_final_g || d.fecha_final_g > d.fecha_inicio_g, {
+    path: ['fecha_final_g'],
+    message: 'Debe ser posterior a la fecha de inicio',
+  })
+  .refine((d) => !d.fecha_inicio_g || d.fecha_inicio_g.startsWith(String(d.anio)), {
+    path: ['anio'],
+    message: 'Debe coincidir con el año de la fecha de inicio',
+  })
+export type DatosGestion = z.infer<typeof esquemaGestion>
+
+export const esquemaPeriodo = z
+  .object({
+    nombre_periodo: z.string().trim().min(1, 'Ingrese el nombre').max(50, 'Máximo 50 caracteres'),
+    tipo: z.enum(['trimestre', 'bimestre', 'semestre']),
+    fecha_inicio_p: z.string().min(1, 'Ingrese la fecha de inicio'),
+    fecha_final_p: z.string().min(1, 'Ingrese la fecha final'),
+  })
+  .refine((d) => !d.fecha_inicio_p || !d.fecha_final_p || d.fecha_final_p > d.fecha_inicio_p, {
+    path: ['fecha_final_p'],
+    message: 'Debe ser posterior a la fecha de inicio',
+  })
+export type DatosPeriodo = z.infer<typeof esquemaPeriodo>
+
+export const esquemaDimension = z.object({
+  nombre_dimension: z.string().trim().min(1, 'Ingrese el nombre').max(30, 'Máximo 30 caracteres'),
+  puntaje_maximo: z.number('Ingrese el puntaje').gt(0, 'Debe ser mayor que 0').max(100, 'Máximo 100'),
+  es_autoevaluacion: z.boolean(),
+})
+export type DatosDimension = z.infer<typeof esquemaDimension>
