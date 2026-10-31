@@ -57,8 +57,18 @@ SELECT u.nombre_usuario, r.nombre_rol, p.nombre_persona || ' ' || p.apellidos AS
  LIMIT 30;
 ```
 
+## Asignaciones cargadas a mano
+
+Si la base tiene asignaciones de profesor hechas a mano cuya aula ya no tiene espacio en el horario
+(por ejemplo, todas las materias de un curso en un aula de otro curso), quedan sin horario y sin asistencia.
+Con `--corregir-aulas` el cargador las pasa al aula de su curso (u otra libre). Es lo **único** que modifica
+de lo existente, solo con esa opción, y muestra en pantalla cada cambio.
+
 ## Producción
 
 En producción la contraseña **no** debe ser la del repositorio: cualquiera que lea GitHub podría entrar
 como cualquier docente o tutor de la página publicada. La carga en producción la hace solo una persona
 del grupo, con una contraseña que se comparte por privado.
+
+Si no se pasa `--clave`, el cargador la pide sin mostrarla en pantalla. Mientras carga (1 a 2 minutos),
+la página publicada puede quedar en espera.

@@ -20,6 +20,9 @@ Uso (desde la carpeta backend, con su entorno virtual activado):
     --simular   hace todo y al final deshace los cambios (para probar sin guardar).
     --hasta     último día con asistencia (por defecto hoy, hora de Bolivia).
     --semilla   misma semilla = mismos datos (por defecto 2026).
+    --corregir-aulas  si hay asignaciones cargadas a mano cuya aula ya no tiene espacio en el horario,
+                las pasa al aula de su curso (u otra libre). Es lo ÚNICO que modifica de lo existente,
+                y solo con esta opción; muestra qué cambió.
 
 Se ejecuta en UNA transacción: si algo falla, la base queda exactamente como estaba.
 Durante la carga se apaga la auditoría (si no, la bitácora tendría cientos de miles de
@@ -28,6 +31,7 @@ bitácora que resume la carga.
 """
 import argparse
 import asyncio
+import getpass
 import json
 import random
 import sys
@@ -129,11 +133,17 @@ class Plan:
 async def main() -> None:
     p = argparse.ArgumentParser(description="Carga el dataset de demostración del sistema escolar.")
     p.add_argument("--url", required=True, help="postgresql://usuario:clave@host:puerto/base")
-    p.add_argument("--clave", required=True, help="contraseña de los usuarios nuevos")
+    p.add_argument("--clave", help="contraseña de los usuarios nuevos (si no se indica, se pide sin mostrarla)")
     p.add_argument("--hasta", type=date.fromisoformat, default=datetime.now(BOLIVIA).date())
     p.add_argument("--semilla", type=int, default=2026)
     p.add_argument("--simular", action="store_true")
+    p.add_argument("--corregir-aulas", action="store_true",
+                   help="pasa al aula de su curso las asignaciones existentes que no entran en el horario de su aula")
     args = p.parse_args()
+    if args.clave is None:
+        args.clave = getpass.getpass("Contraseña para los usuarios nuevos: ")
+        if getpass.getpass("Repítala: ") != args.clave:
+            sys.exit("Las contraseñas no coinciden.")
     if len(args.clave) < 8:
         sys.exit("La contraseña debe tener al menos 8 caracteres.")
 
@@ -387,19 +397,22 @@ async def cargar(conn: asyncpg.Connection, args) -> dict:
     carga_prof = defaultdict(int)
     for t in trabajo:
         carga_prof[t[3]] += 1
-    trabajo.sort(key=lambda t: (-carga_prof[t[3]], -bloques_necesarios(t[2], t[5])))
+    # primero las asignaciones que ya existían (su docente y aula no se eligen), luego las más restringidas
+    trabajo.sort(key=lambda t: (t[0] != "existente", -carga_prof[t[3]], -bloques_necesarios(t[2], t[5])))
 
     # Aulas comunes para cuando el aula del curso ya está llena (asignaciones cargadas a mano)
     aulas_comunes = sorted(n for n in aulas if n[:1] in "ABI" and "-" in n)
+    CANCHAS = [x for x in ("PATIO", "CANCHA") if x in aulas]
     clave_aula = lambda numero: aulas.get(numero) if aulas.get(numero) is not None else numero  # PATIO aún sin id
 
+    aulas_corregidas, sin_horario = [], []
     for origen, ref, c, prof, aula, m, k in trabajo:
         n = bloques_necesarios(c, m)
         aula_clave = clave_aula(aula) if isinstance(aula, str) else aula
         elegidos = programar(ref, c, prof, aula_clave, n, dias_de_asig[(origen, ref)])
         if elegidos is None and origen == "nueva":
             # 1) otra aula con el mismo docente; 2) otro docente (en su aula o en otra)
-            alternativas = [] if m == "Educacion Fisica y Deportes" else [x for x in aulas_comunes if x != aula]
+            alternativas = [x for x in (CANCHAS if m == "Educacion Fisica y Deportes" else aulas_comunes) if x != aula]
             rng.shuffle(alternativas)
             for alt in alternativas:
                 elegidos = programar(ref, c, prof, clave_aula(alt), n, set())
@@ -415,8 +428,19 @@ async def cargar(conn: asyncpg.Connection, args) -> dict:
                         docente_de[k] = nuevo
                         break
             asig_nuevas[ref]["profesor"], asig_nuevas[ref]["aula"] = prof, aula
+        if elegidos is None and origen == "existente" and args.corregir_aulas:
+            # Asignación cargada a mano en un aula sin espacio: se pasa al aula del curso (u otra libre)
+            propia = aula_de(c, m)
+            otras = [x for x in (CANCHAS if m == "Educacion Fisica y Deportes" else aulas_comunes) if x != propia]
+            for alt in [propia] + otras:
+                elegidos = programar(ref, c, prof, clave_aula(alt), n, set())
+                if elegidos:
+                    aula_clave = clave_aula(alt)
+                    aulas_corregidas.append((ref, alt, c["nombre_curso"], m))
+                    break
         if elegidos is None:
             if origen == "existente":
+                sin_horario.append(f"{m} en {c['nombre_curso']}")
                 continue                           # asignación cargada a mano sin espacio: se deja sin horario
             sys.exit(f"No se pudo armar el horario de {m} en {c['nombre_curso']}.")
         for d, ini, fin, ini_t, fin_t in elegidos:
@@ -568,6 +592,12 @@ async def cargar(conn: asyncpg.Connection, args) -> dict:
                                                      id_curso_asignacion, id_aula_asignacion, id_gestion_asignacion)
                VALUES ($1, $2, $3, $4, $5) RETURNING id_asignacion""",
             a["profesor"], a["materia"], a["curso"], aulas[a["aula"]], g26["id_gestion"])
+    for id_asig, numero, curso, materia in aulas_corregidas:
+        await conn.execute("UPDATE asignacion_profesor_clase SET id_aula_asignacion = $1 WHERE id_asignacion = $2",
+                           aulas[numero], id_asig)
+        log(f"  aula corregida: {materia} en {curso} -> {numero}")
+    for texto in sin_horario:
+        log(f"  sin horario (asignacion existente sin espacio): {texto}")
     await conn.executemany(
         "INSERT INTO horario (id_asignacion_horario, dia, hora_inicio_h, hora_final_f) VALUES ($1, $2, $3, $4)",
         [((asig_nuevas[ref]["id"] if origen == "nueva" else ref), d, ini, fin)
@@ -886,6 +916,8 @@ async def cargar(conn: asyncpg.Connection, args) -> dict:
         "Usuarios nuevos": len(plan.usuarios),
         "Asignaciones 2026 nuevas": len(asig_nuevas),
         "Bloques de horario nuevos": len(nuevos_bloques),
+        "Aulas corregidas": len(aulas_corregidas),
+        "Asignaciones sin horario": len(sin_horario),
         "Asistencias (total en la base)": await conn.fetchval("SELECT count(*) FROM asistencia"),
         "Calificaciones (total)": await conn.fetchval("SELECT count(*) FROM calificacion"),
         "Cuotas (total)": await conn.fetchval("SELECT count(*) FROM pago_mensualidad"),
