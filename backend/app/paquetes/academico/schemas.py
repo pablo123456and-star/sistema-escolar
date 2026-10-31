@@ -576,8 +576,6 @@ class DimensionesGuardar(BaseModel):
             raise ValueError("Los nombres de las dimensiones no pueden repetirse.")
         if sum(d.es_autoevaluacion for d in self.dimensiones) > 1:
             raise ValueError("Solo una dimensión puede ser la autoevaluación.")
-        if sum(d.puntaje_maximo for d in self.dimensiones) > 100:
-            raise ValueError("Los puntajes de las dimensiones no pueden superar 100 en total.")
         return self
 
 

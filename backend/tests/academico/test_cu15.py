@@ -50,7 +50,7 @@ async def test_cu15_periodos(cliente, admin):
     primero = existentes[0]
     r = await cliente.post(f"/academico/gestiones/{id_g}/periodos", headers=admin, json={
         "nombre_periodo": "Solapado", "fecha_inicio_p": primero["fecha_inicio_p"], "fecha_final_p": primero["fecha_final_p"]})
-    assert r.status_code == 409
+    assert r.status_code == 400
 
     # un periodo con calificaciones no se elimina
     r = await cliente.delete(f"/academico/periodos/{primero['id_periodo']}", headers=admin)
@@ -64,10 +64,19 @@ async def test_cu15_dimensiones(cliente, admin):
     r = await cliente.get(f"/academico/gestiones/{id_g}/dimensiones", headers=admin)
     assert r.status_code == 200 and r.json()["completa"] is True
 
-    # no superan 100, ni nombres repetidos, ni dos autoevaluaciones
-    dos = [{"nombre_dimension": "A", "puntaje_maximo": 60}, {"nombre_dimension": "B", "puntaje_maximo": 60}]
+    # deben sumar exactamente 100: ni más ni menos
+    for puntajes in ([60, 60], [40, 30]):
+        dims = [{"nombre_dimension": n, "puntaje_maximo": p} for n, p in zip("AB", puntajes)]
+        r = await cliente.put(f"/academico/gestiones/{id_g}/dimensiones", headers=admin, json={"dimensiones": dims})
+        assert r.status_code == 400, r.text
+
+    # ni nombres repetidos, ni dos autoevaluaciones
+    rep = [{"nombre_dimension": "A", "puntaje_maximo": 50}, {"nombre_dimension": "a", "puntaje_maximo": 50}]
     assert (await cliente.put(f"/academico/gestiones/{id_g}/dimensiones", headers=admin,
-                              json={"dimensiones": dos})).status_code == 422
+                              json={"dimensiones": rep})).status_code == 422
+    auto = [{"nombre_dimension": n, "puntaje_maximo": 50, "es_autoevaluacion": True} for n in "AB"]
+    assert (await cliente.put(f"/academico/gestiones/{id_g}/dimensiones", headers=admin,
+                              json={"dimensiones": auto})).status_code == 422
 
     # la gestión 2026 ya tiene calificaciones: no se reemplazan
     ok = [{"nombre_dimension": "A", "puntaje_maximo": 100}]

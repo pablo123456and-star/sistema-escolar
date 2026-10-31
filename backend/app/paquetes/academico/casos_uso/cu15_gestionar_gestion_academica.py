@@ -11,8 +11,8 @@ Reglas de negocio que implementa este caso de uso (backend):
     - Solo administrador.
     - Una sola gestión abierta a la vez; el año coincide con el de la fecha de inicio.
     - El periodo debe estar dentro de las fechas de su gestión y no solaparse con otro periodo.
-    - Las dimensiones de evaluación de una gestión suman 100: se pueden guardar incompletas
-      (borrador) pero la gestión no se cierra hasta que sumen exactamente 100.
+    - Las dimensiones de evaluación de una gestión deben sumar exactamente 100 para guardarse;
+      como máximo una de autoevaluación. La gestión no se cierra si no suman 100.
     - Las dimensiones no se reemplazan si ya hay calificaciones registradas con ellas.
     - Una gestión cerrada no admite cambios en sus periodos ni en sus dimensiones.
     - La nota mínima de aprobación no se puede cambiar si la gestión ya tiene calificaciones.
@@ -125,7 +125,7 @@ async def _validar_periodo(sesion: AsyncSession, gestion, datos: dict, excepto: 
         sesion, gestion.id_gestion, datos["fecha_inicio_p"], datos["fecha_final_p"], excepto
     )
     if otro:
-        raise Conflicto(f"El periodo se solapa con «{otro}».")
+        raise ErrorNegocio(f"El periodo se solapa con «{otro}».")
 
 
 async def listar_periodos(sesion: AsyncSession, id_gestion: int) -> list[PeriodoSalida]:
@@ -192,6 +192,9 @@ async def consultar_dimensiones(sesion: AsyncSession, id_gestion: int) -> Dimens
 
 async def guardar_dimensiones(sesion: AsyncSession, id_gestion: int, datos: DimensionesGuardar) -> DimensionesSalida:
     await _gestion_abierta(sesion, id_gestion)
+    suma = sum((d.puntaje_maximo for d in datos.dimensiones), Decimal(0))
+    if suma != 100:
+        raise ErrorNegocio(f"Las dimensiones deben sumar exactamente 100 puntos (suman {suma:g}).")
     if await repo.notas_en_gestion_cu15(sesion, id_gestion):
         raise Conflicto("Ya hay calificaciones registradas con estas dimensiones: no se pueden reemplazar.")
     await repo.reemplazar_dimensiones_cu15(sesion, id_gestion, [d.model_dump() for d in datos.dimensiones])

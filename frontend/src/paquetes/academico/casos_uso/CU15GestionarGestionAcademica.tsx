@@ -316,7 +316,7 @@ function SeccionDimensiones({ gestion }: { gestion: Gestion }) {
   return (
     <Seccion
       titulo="Dimensiones de evaluación"
-      descripcion="Las partes de la nota (ser, saber, hacer, decidir, autoevaluación). Deben sumar 100 para poder cerrar la gestión."
+      descripcion="Las partes de la nota (ser, saber, hacer, decidir, autoevaluación). Deben sumar exactamente 100 para guardarse."
     >
       {dimensiones.isLoading || !dimensiones.data ? (
         <p className="py-6 text-center text-sm text-slate-500">Cargando...</p>
@@ -342,8 +342,9 @@ function EditorDimensiones({ idGestion, editable, guardadas }: { idGestion: numb
       es_autoevaluacion: d.es_autoevaluacion,
     })),
   )
-  const suma = filas.reduce((a, f) => a + (Number.isFinite(f.puntaje_maximo) ? f.puntaje_maximo : 0), 0)
-  const valido = filas.length > 0 && filas.every((f) => f.nombre_dimension.trim() && f.puntaje_maximo > 0) && suma <= 100
+  // redondeo a 2 decimales (como NUMERIC(5,2) en la BD) para evitar errores de coma flotante
+  const suma = Math.round(filas.reduce((a, f) => a + (Number.isFinite(f.puntaje_maximo) ? f.puntaje_maximo : 0), 0) * 100) / 100
+  const valido = filas.length > 0 && filas.every((f) => f.nombre_dimension.trim() && f.puntaje_maximo > 0) && suma === 100
 
   const cambiar = (i: number, cambios: Partial<DatosDimension>) =>
     setFilas((actual) =>
@@ -393,7 +394,7 @@ function EditorDimensiones({ idGestion, editable, guardadas }: { idGestion: numb
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
         <p className={cn('text-sm font-medium', suma === 100 ? 'text-emerald-600' : 'text-amber-600')}>
-          Suma: {suma} / 100 {suma === 100 ? '✓' : suma > 100 ? '(excede 100)' : '(incompleta)'}
+          Suma: {suma} / 100 {suma === 100 ? '✓' : suma > 100 ? '(excede 100: no se puede guardar)' : '(incompleta: no se puede guardar)'}
         </p>
         {editable && (
           <div className="flex gap-2">
