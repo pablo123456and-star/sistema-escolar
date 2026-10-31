@@ -184,6 +184,25 @@ async def test_cu01_recuperar_contrasena_y_restablecer(cliente, admin):
     assert pendientes == []
 
 
+async def test_cu01_solicitud_atendida_con_el_enlace_del_correo(cliente, admin):
+    """Si el usuario restablece su contraseña con el enlace del correo, la solicitud deja de estar pendiente."""
+    r = await cliente.post("/seguridad/recuperar-contrasena", json={"correo": "rflores"})
+    assert r.status_code == 200
+    pendientes = (await cliente.get("/seguridad/usuarios/solicitudes-recuperacion", headers=admin)).json()
+    assert [p["nombre_usuario"] for p in pendientes] == ["rflores"]
+
+    from app.nucleo import bd
+    from app.nucleo.seguridad import generar_token_recuperacion
+    token_plano, token_hash = generar_token_recuperacion()
+    async with bd._fabrica() as s:
+        s.add(TokenRecuperacion(id_usuario=4, token_hash=token_hash, expira_en=datetime.now(UTC) + timedelta(minutes=15)))
+        await s.commit()
+    r = await cliente.post("/seguridad/restablecer-contrasena", json={"token": token_plano, "nueva": "Colegio2026*!"})
+    assert r.status_code == 200, r.text
+    pendientes = (await cliente.get("/seguridad/usuarios/solicitudes-recuperacion", headers=admin)).json()
+    assert pendientes == []
+
+
 async def test_cu01_panel_inicio(cliente, admin, profesor):
     r = (await cliente.get("/seguridad/inicio", headers=admin)).json()
     assert r["estudiantes_activos"] == 12 and r["actividades"]
