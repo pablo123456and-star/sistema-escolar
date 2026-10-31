@@ -64,7 +64,7 @@ export const PAQUETES: Paquete[] = [
     paquete: 'administracion',
     titulo: 'Administración: pagos, inventario y comunicados',
     casos: [
-      { codigo: 'CU25', nombre: 'Registrar pago de mensualidad (incluye aranceles, becas, cuotas y morosos)', ruta: '/administracion/cu25' },
+      { codigo: 'CU25', nombre: 'Registrar pago de mensualidad (incluye aranceles, becas, cuotas y morosos)', ruta: '/administracion/pagos' },
       { codigo: 'CU26', nombre: 'Gestionar inventario (registrar, actualizar, consultar bienes)', ruta: '/administracion/cu26' },
       { codigo: 'CU27', nombre: 'Gestionar comunicados y citaciones', ruta: '/administracion/cu27' },
     ],

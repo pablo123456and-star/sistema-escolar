@@ -59,6 +59,12 @@ MENSAJES_RESTRICCION = {
     "grado_id_nivel_educativo_grado_orden_grado_key": "El nivel ya tiene un grado con ese orden.",
     "curso_id_grado_curso_paralelo_key": "El grado ya tiene ese paralelo.",
     "curso_cupo_maximo_check": "El cupo del curso debe ser mayor a 0.",
+    # CU25 - Registrar pago de mensualidad
+    "arancel_id_gestion_arancel_id_nivel_arancel_key": "El nivel ya tiene arancel en esa gestión.",
+    "beca_ci_estudiante_beca_id_gestion_beca_key": "El estudiante ya tiene una beca en esa gestión.",
+    "beca_porcentaje_descuento_check": "El porcentaje de beca debe ser mayor a 0 y como máximo 100.",
+    "pago_mensualidad_numero_recibo_key": "El número de recibo ya fue usado.",
+    "pago_mensualidad_ci_tutor_pago_ci_estudiante_pago_fkey": "La persona indicada no es tutor de ese estudiante.",
 }
 
 
