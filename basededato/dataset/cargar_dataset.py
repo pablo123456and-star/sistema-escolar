@@ -153,6 +153,8 @@ async def main() -> None:
         await conn.execute("SET TIME ZONE 'America/La_Paz'")
         tr = conn.transaction()
         await tr.start()
+        # Supabase corta las consultas de más de 2 min; la carga masiva puede tardar más (solo en esta transacción)
+        await conn.execute("SET LOCAL statement_timeout = 0")
         try:
             resumen = await cargar(conn, args)
         except BaseException:
@@ -168,6 +170,13 @@ async def main() -> None:
             print(f"  {k:.<34} {v}")
     finally:
         await conn.close()
+
+
+async def analizar(conn: asyncpg.Connection) -> None:
+    """Actualiza las estadísticas tras las inserciones masivas: sin esto PostgreSQL cree que las tablas
+    siguen casi vacías y elige planes muy lentos (en Supabase llegan a pasar el límite de tiempo)."""
+    await conn.execute("ANALYZE persona, estudiante, tutor_estudiante, inscripcion, asignacion_profesor_clase, "
+                       "horario, calificacion, calificacion_detalle, pago_mensualidad, beca, tmp_perfil")
 
 
 async def cargar(conn: asyncpg.Connection, args) -> dict:
@@ -680,6 +689,7 @@ async def cargar(conn: asyncpg.Connection, args) -> dict:
            AND (i.fecha_retiro IS NULL OR p.fecha_final_p < i.fecha_retiro)
         ON CONFLICT DO NOTHING"""
 
+    await analizar(conn)
     log("Notas y boletines 2025...")
     p25 = [r["id_periodo"] for r in await conn.fetch(
         "SELECT id_periodo FROM periodo WHERE id_gestion_periodo = $1 ORDER BY fecha_inicio_p", g25)]
@@ -708,6 +718,7 @@ async def cargar(conn: asyncpg.Connection, args) -> dict:
 
     # Pagos: puntuales, tardíos y morosos (los morosos deben sus últimas cuotas vencidas).
     # Solo se cobran las cuotas creadas ahora; los recibos siguen la secuencia, en orden de fecha.
+    await analizar(conn)
     log("Pagos con recibo...")
     await conn.execute(
         """WITH nuevas AS (
@@ -753,6 +764,7 @@ async def cargar(conn: asyncpg.Connection, args) -> dict:
                                                  (SELECT last_value FROM seq_numero_recibo)))""")
 
     # ------------------------------------------------------------------ cierre 2025
+    await analizar(conn)
     log("Cerrando la gestión 2025 (promovidos y reprobados)...")
     await conn.execute("CALL sp_cerrar_gestion($1, NULL)", g25)
 
@@ -791,6 +803,7 @@ async def cargar(conn: asyncpg.Connection, args) -> dict:
            ON CONFLICT DO NOTHING""", g26["id_gestion"], hasta, no_clases)
 
     # ------------------------------------------------------------------ notas 2026
+    await analizar(conn)
     log("Notas y boletines 2026...")
     t1, t2, t3 = (periodos26[n]["id_periodo"] for n in ("1er Trimestre", "2do Trimestre", "3er Trimestre"))
     terminados = [periodos26[n]["id_periodo"] for n in ("1er Trimestre", "2do Trimestre")
