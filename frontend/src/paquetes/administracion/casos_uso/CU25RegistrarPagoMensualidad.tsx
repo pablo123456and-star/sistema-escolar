@@ -13,14 +13,17 @@
  *     cuota que ya no corresponde se anula (ambos con motivo).
  *   - Aranceles por nivel, Becas por estudiante, Generar cuotas de un mes y Morosos (cuotas
  *     atrasadas con el teléfono del tutor).
- * Tutor y estudiante: sus cuotas (solo lectura) y los recibos de las pagadas.
+ * Tutor y estudiante: sus cuotas y los recibos de las pagadas. Si el pago en línea está habilitado,
+ * pagan una cuota pendiente con tarjeta en Stripe (MODO DE PRUEBA, tarjeta 4242 4242 4242 4242);
+ * al volver, el backend confirma el pago con Stripe y se muestra el recibo.
  *
  * Precondición:  La cuota está pendiente y quien cobra es un administrativo.
  * Postcondición: La cuota queda pagada con número de recibo único y fecha; queda registrado en la bitácora.
  *
  * Estado: IMPLEMENTADO.
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -29,6 +32,7 @@ import {
   BanIcon,
   CalendarPlusIcon,
   CoinsIcon,
+  CreditCardIcon,
   PencilIcon,
   PhoneIcon,
   PlusIcon,
@@ -56,12 +60,15 @@ import {
   useAranceles,
   useBecas,
   useCobrar,
+  useConfirmarPagoEnLinea,
   useCorregirCuota,
   useEstadoCuenta,
+  useEstadoPagoEnLinea,
   useEstudiantesPago,
   useGenerarCuotas,
   useGuardarArancel,
   useGuardarBeca,
+  useIniciarPagoEnLinea,
   useMisCuotas,
   useMorosos,
   useRecibo,
@@ -941,8 +948,11 @@ function PestanaMorosos({ onCobrar }: { onCobrar: (ci: string) => void }) {
 function PantallaMisCuotas() {
   const { usuario } = useSesion()
   const cuentas = useMisCuotas()
+  const enLinea = useEstadoPagoEnLinea().data?.habilitado ?? false
   const [ci, setCi] = useState<string | null>(null)
-  const [recibo, setRecibo] = useState<number | null>(null)
+  const [recibo, setRecibo] = useState<{ id_pago: number; datos?: Recibo } | null>(null)
+  const [aPagar, setAPagar] = useState<Cuota | null>(null)
+  useRetornoDePago((datos) => setRecibo({ id_pago: datos.id_pago, datos }))
 
   const lista = cuentas.data ?? []
   const cuenta = lista.find((c) => c.estudiante.ci === ci) ?? lista[0]
@@ -951,7 +961,8 @@ function PantallaMisCuotas() {
     <div className="space-y-5">
       <EncabezadoPagina
         titulo={usuario?.rol === 'estudiante' ? 'Mis pagos' : 'Pagos de mensualidad'}
-        descripcion="Cuotas de la mensualidad y recibos de las que ya se pagaron."
+        descripcion={enLinea ? 'Cuotas de la mensualidad: pague en línea las pendientes o vea los recibos de las pagadas.'
+          : 'Cuotas de la mensualidad y recibos de las que ya se pagaron.'}
       />
       {!cuentas.data ? (
         <Cargando consulta={cuentas} />
@@ -983,13 +994,86 @@ function PantallaMisCuotas() {
             cuotas={cuenta.cuotas}
             acciones={(c) =>
               c.estado_pago === 'pagado' ? (
-                <Button size="sm" variant="outline" onClick={() => setRecibo(c.id_pago)}><ReceiptTextIcon /> Recibo</Button>
+                <Button size="sm" variant="outline" onClick={() => setRecibo({ id_pago: c.id_pago })}><ReceiptTextIcon /> Recibo</Button>
+              ) : c.estado_pago === 'pendiente' && enLinea ? (
+                <Button size="sm" onClick={() => setAPagar(c)}><CreditCardIcon /> Pagar en línea</Button>
               ) : null
             }
           />
         </>
       )}
-      {recibo !== null && <DialogoRecibo id_pago={recibo} onCerrar={() => setRecibo(null)} />}
+      {aPagar && cuenta && <DialogoPagoEnLinea cuota={aPagar} cuenta={cuenta} onCerrar={() => setAPagar(null)} />}
+      {recibo && <DialogoRecibo id_pago={recibo.id_pago} inicial={recibo.datos} onCerrar={() => setRecibo(null)} />}
     </div>
+  )
+}
+
+/** Al volver de Stripe (?pago=exito&id_sesion=...): se confirma el pago una sola vez y se limpia la dirección. */
+function useRetornoDePago(onPagado: (recibo: Recibo) => void) {
+  const [parametros, setParametros] = useSearchParams()
+  const confirmar = useConfirmarPagoEnLinea()
+  const atendido = useRef(false)
+  const pago = parametros.get('pago')
+  const idSesion = parametros.get('id_sesion')
+
+  useEffect(() => {
+    if (!pago || atendido.current) return
+    atendido.current = true
+    setParametros({}, { replace: true })
+    if (pago === 'cancelado') {
+      toast.info('Pago cancelado: no se cobró nada.')
+      return
+    }
+    if (pago === 'exito' && idSesion) {
+      confirmar
+        .mutateAsync(idSesion)
+        .then((r) => {
+          toast.success(`Pago registrado. Recibo N° ${nroRecibo(r.numero_recibo)}.`)
+          onPagado(r)
+        })
+        .catch((e) => toast.error(mensajeError(e)))
+    }
+  }, [pago, idSesion, confirmar, onPagado, setParametros])
+}
+
+function DialogoPagoEnLinea({ cuota, cuenta, onCerrar }: { cuota: Cuota; cuenta: EstadoCuenta; onCerrar: () => void }) {
+  const iniciar = useIniciarPagoEnLinea()
+  const irAPagar = async () => {
+    try {
+      const { url } = await iniciar.mutateAsync(cuota.id_pago)
+      window.location.assign(url)
+    } catch (e) {
+      toast.error(mensajeError(e))
+    }
+  }
+  return (
+    <Dialog open onOpenChange={(v) => !v && onCerrar()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Pagar en línea</DialogTitle>
+          <DialogDescription>
+            {cuenta.estudiante.apellidos}, {cuenta.estudiante.nombre_persona} · {MESES[cuota.mes - 1]} {cuota.anio}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1.5 rounded-lg bg-slate-50 p-3 text-sm">
+          <Linea texto="Monto mensual" valor={bs(cuota.monto + cuota.descuento_aplicado)} />
+          {cuota.descuento_aplicado > 0 && <Linea texto="Descuento por beca" valor={`−${bs(cuota.descuento_aplicado)}`} />}
+          <Linea texto="Total a pagar" valor={bs(cuota.monto)} fuerte />
+        </div>
+        <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          <TriangleAlertIcon className="size-4 shrink-0" />
+          <p>
+            <b>Modo de prueba:</b> no se cobra dinero real. En la página de Stripe use la tarjeta{' '}
+            <b>4242 4242 4242 4242</b>, cualquier fecha futura y cualquier código de seguridad.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCerrar}>Cancelar</Button>
+          <Button onClick={irAPagar} disabled={iniciar.isPending}>
+            <CreditCardIcon /> {iniciar.isPending ? 'Abriendo Stripe...' : `Pagar ${bs(cuota.monto)}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

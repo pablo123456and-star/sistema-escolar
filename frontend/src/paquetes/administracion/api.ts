@@ -119,3 +119,30 @@ export function useCorregirCuota() {
 export function useMorosos() {
   return useQuery({ queryKey: [...PAGOS, 'morosos'], queryFn: () => api<Morosos>('/administracion/morosos') })
 }
+
+// ---- Pago en línea (Stripe, modo de prueba) ----
+
+export function useEstadoPagoEnLinea() {
+  return useQuery({
+    queryKey: [...PAGOS, 'en-linea'],
+    queryFn: () => api<{ habilitado: boolean }>('/administracion/pagos/en-linea/estado'),
+  })
+}
+
+/** Crea la sesión de pago en Stripe y devuelve la página de pago a la que se redirige. */
+export function useIniciarPagoEnLinea() {
+  return useMutation({
+    mutationFn: (id_pago: number) =>
+      api<{ url: string }>(`/administracion/pagos/${id_pago}/pagar-en-linea`, { metodo: 'POST' }),
+  })
+}
+
+/** Al volver de Stripe: el backend consulta a Stripe y, si está pagado, registra el cobro y devuelve el recibo. */
+export function useConfirmarPagoEnLinea() {
+  const invalidar = useInvalidarPagos()
+  return useMutation({
+    mutationFn: (id_sesion: string) =>
+      api<Recibo>('/administracion/pagos/en-linea/confirmar', { metodo: 'POST', cuerpo: { id_sesion } }),
+    onSuccess: invalidar,
+  })
+}
