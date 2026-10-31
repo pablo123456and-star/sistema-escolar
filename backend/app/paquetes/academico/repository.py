@@ -10,6 +10,8 @@ PENDIENTE.
 # CU13 - REPOSITORIO DE MATERIAS Y PLAN DE ESTUDIOS
 # ============================================================
 
+import json
+
 from sqlalchemy import select, func, exists, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -856,3 +858,158 @@ async def uso_curso_cu12(sesion: AsyncSession, id_curso: int):
             {"c": id_curso},
         )
     ).one()
+
+
+# ============================================================
+# CU15 - GESTIÓN ACADÉMICA, PERIODOS Y DIMENSIONES
+# ============================================================
+
+_SQL_GESTION = """SELECT g.id_gestion, g.anio, g.fecha_inicio_g, g.fecha_final_g, g.nota_minima_aprobacion, g.estado_gestion,
+                         (SELECT count(*) FROM periodo p WHERE p.id_gestion_periodo = g.id_gestion) AS periodos,
+                         (SELECT count(*) FROM inscripcion i WHERE i.id_gestion_inscripcion = g.id_gestion) AS inscritos
+                    FROM gestion g"""
+
+
+async def listar_gestiones_cu15(sesion: AsyncSession):
+    return (await sesion.execute(text(_SQL_GESTION + " ORDER BY g.anio DESC"))).all()
+
+
+async def obtener_gestion_cu15(sesion: AsyncSession, id_gestion: int):
+    return (await sesion.execute(text(_SQL_GESTION + " WHERE g.id_gestion = :g"), {"g": id_gestion})).one_or_none()
+
+
+async def gestion_abierta_cu15(sesion: AsyncSession):
+    return (await sesion.execute(text("SELECT id_gestion, anio FROM gestion WHERE estado_gestion = 'abierta' LIMIT 1"))).one_or_none()
+
+
+async def crear_gestion_cu15(sesion: AsyncSession, datos: dict) -> int:
+    return await sesion.scalar(
+        text("""INSERT INTO gestion (anio, fecha_inicio_g, fecha_final_g, nota_minima_aprobacion)
+                VALUES (:anio, :fecha_inicio_g, :fecha_final_g, :nota_minima_aprobacion) RETURNING id_gestion"""),
+        datos,
+    )
+
+
+async def actualizar_gestion_cu15(sesion: AsyncSession, id_gestion: int, datos: dict) -> None:
+    await sesion.execute(
+        text("""UPDATE gestion SET anio = :anio, fecha_inicio_g = :fecha_inicio_g, fecha_final_g = :fecha_final_g,
+                       nota_minima_aprobacion = :nota_minima_aprobacion
+                 WHERE id_gestion = :id"""),
+        {**datos, "id": id_gestion},
+    )
+
+
+async def listar_periodos_cu15(sesion: AsyncSession, id_gestion: int):
+    return (
+        await sesion.execute(
+            text("SELECT * FROM periodo WHERE id_gestion_periodo = :g ORDER BY fecha_inicio_p"), {"g": id_gestion}
+        )
+    ).all()
+
+
+async def obtener_periodo_cu15(sesion: AsyncSession, id_periodo: int):
+    return (await sesion.execute(text("SELECT * FROM periodo WHERE id_periodo = :p"), {"p": id_periodo})).one_or_none()
+
+
+async def periodo_solapado_cu15(sesion: AsyncSession, id_gestion: int, inicio, fin, excepto: int | None = None):
+    """Nombre de un periodo de la gestión que se solapa con [inicio, fin], o None."""
+    return await sesion.scalar(
+        text("""SELECT nombre_periodo FROM periodo
+                 WHERE id_gestion_periodo = :g AND fecha_inicio_p <= :fin AND fecha_final_p >= :ini
+                   AND (CAST(:ex AS INTEGER) IS NULL OR id_periodo <> :ex)
+                 LIMIT 1"""),
+        {"g": id_gestion, "ini": inicio, "fin": fin, "ex": excepto},
+    )
+
+
+async def crear_periodo_cu15(sesion: AsyncSession, id_gestion: int, datos: dict) -> int:
+    return await sesion.scalar(
+        text("""INSERT INTO periodo (nombre_periodo, tipo, fecha_inicio_p, fecha_final_p, observaciones_periodo, id_gestion_periodo)
+                VALUES (:nombre_periodo, :tipo, :fecha_inicio_p, :fecha_final_p, :observaciones_periodo, :g)
+                RETURNING id_periodo"""),
+        {**datos, "g": id_gestion},
+    )
+
+
+async def actualizar_periodo_cu15(sesion: AsyncSession, id_periodo: int, datos: dict) -> None:
+    await sesion.execute(
+        text("""UPDATE periodo SET nombre_periodo = :nombre_periodo, tipo = :tipo, fecha_inicio_p = :fecha_inicio_p,
+                       fecha_final_p = :fecha_final_p, observaciones_periodo = :observaciones_periodo
+                 WHERE id_periodo = :id"""),
+        {**datos, "id": id_periodo},
+    )
+
+
+async def eliminar_periodo_cu15(sesion: AsyncSession, id_periodo: int) -> None:
+    await sesion.execute(text("DELETE FROM periodo WHERE id_periodo = :p"), {"p": id_periodo})
+
+
+async def calificaciones_en_periodo_cu15(sesion: AsyncSession, id_periodo: int) -> int:
+    return await sesion.scalar(
+        text("SELECT count(*) FROM calificacion WHERE id_periodo_calificacion = :p"), {"p": id_periodo}
+    ) or 0
+
+
+async def calificaciones_en_gestion_cu15(sesion: AsyncSession, id_gestion: int) -> int:
+    """Calificaciones registradas en cualquier periodo de la gestión."""
+    return await sesion.scalar(
+        text("""SELECT count(*) FROM calificacion c
+                  JOIN periodo p ON p.id_periodo = c.id_periodo_calificacion
+                 WHERE p.id_gestion_periodo = :g"""),
+        {"g": id_gestion},
+    ) or 0
+
+
+async def listar_dimensiones_cu15(sesion: AsyncSession, id_gestion: int):
+    return (
+        await sesion.execute(
+            text("""SELECT id_dimension, nombre_dimension, puntaje_maximo, es_autoevaluacion, orden_dimension
+                      FROM dimension_evaluacion WHERE id_gestion_dimension = :g ORDER BY orden_dimension, id_dimension"""),
+            {"g": id_gestion},
+        )
+    ).all()
+
+
+async def notas_en_gestion_cu15(sesion: AsyncSession, id_gestion: int) -> int:
+    """Detalles de calificación que usan alguna dimensión de la gestión."""
+    return await sesion.scalar(
+        text("""SELECT count(*) FROM calificacion_detalle cd
+                  JOIN dimension_evaluacion d ON d.id_dimension = cd.id_dimension_detalle
+                 WHERE d.id_gestion_dimension = :g"""),
+        {"g": id_gestion},
+    ) or 0
+
+
+async def reemplazar_dimensiones_cu15(sesion: AsyncSession, id_gestion: int, dimensiones: list[dict]) -> None:
+    await sesion.execute(text("DELETE FROM dimension_evaluacion WHERE id_gestion_dimension = :g"), {"g": id_gestion})
+    for orden, d in enumerate(dimensiones, start=1):
+        await sesion.execute(
+            text("""INSERT INTO dimension_evaluacion
+                        (nombre_dimension, puntaje_maximo, es_autoevaluacion, orden_dimension, id_gestion_dimension)
+                    VALUES (:nombre_dimension, :puntaje_maximo, :es_autoevaluacion, :orden, :g)"""),
+            {**d, "orden": orden, "g": id_gestion},
+        )
+
+
+async def resumen_gestion_cu15(sesion: AsyncSession, id_gestion: int):
+    return (
+        await sesion.execute(
+            text("""SELECT
+                      (SELECT count(*) FROM inscripcion WHERE id_gestion_inscripcion = :g AND estado_inscripcion = 'activa')     AS inscritos_activos,
+                      (SELECT count(*) FROM inscripcion WHERE id_gestion_inscripcion = :g AND estado_inscripcion = 'retirada')   AS retirados,
+                      (SELECT count(*) FROM inscripcion WHERE id_gestion_inscripcion = :g AND estado_inscripcion = 'finalizada') AS finalizados,
+                      (SELECT round(avg(nota_final), 2) FROM v_nota_final WHERE id_gestion = :g)                                 AS promedio_general,
+                      (SELECT coalesce(sum(monto), 0) FROM pago_mensualidad
+                        WHERE id_gestion_pago = :g AND estado_pago = 'pagado')                                                   AS total_cobrado,
+                      (SELECT coalesce(sum(monto), 0) FROM pago_mensualidad
+                        WHERE id_gestion_pago = :g AND estado_pago = 'pendiente' AND fecha_vencimiento < CURRENT_DATE)           AS total_vencido"""),
+            {"g": id_gestion},
+        )
+    ).one()
+
+
+async def cerrar_gestion_cu15(sesion: AsyncSession, id_gestion: int) -> dict:
+    """Ejecuta sp_cerrar_gestion y devuelve {'promovidos': n, 'reprobados': m}."""
+    fila = (await sesion.execute(text("CALL sp_cerrar_gestion(:g, NULL)"), {"g": id_gestion})).one()
+    valor = fila[0]
+    return json.loads(valor) if isinstance(valor, str) else dict(valor)

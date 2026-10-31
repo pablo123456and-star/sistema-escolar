@@ -11,7 +11,6 @@ router = APIRouter(prefix="/academico", tags=["academico"])
 #   cu12_gestionar_niveles_cursos
 #   cu13_gestionar_materias
 #   cu14_asignar_profesor
-#   cu15_gestionar_gestion_academica
 #   cu16_inscribir_estudiante
 #   cu17_consultar_historial_inscripciones
 
@@ -454,3 +453,80 @@ async def actualizar_curso(datos: CursoActualizar, _: Administrador, sesion: Ses
 @router.delete("/cursos/{id_curso}", status_code=status.HTTP_204_NO_CONTENT, summary="CU12 - Eliminar paralelo")
 async def eliminar_curso(_: Administrador, sesion: Sesion, id_curso: int):
     await cu12.eliminar_curso(sesion, id_curso)
+
+
+# ============================================================
+# CU15 - GESTIONAR GESTIÓN ACADÉMICA (AÑO LECTIVO)
+# ============================================================
+
+from app.paquetes.academico.casos_uso import cu15_gestionar_gestion_academica as cu15
+from app.paquetes.academico.schemas import (
+    CierreGestionSalida, DimensionesGuardar, DimensionesSalida, GestionActualizar, GestionCrear, GestionSalida,
+    PeriodoActualizar, PeriodoCrear, PeriodoSalida, ResumenGestionSalida,
+)
+
+
+@router.get("/gestiones", response_model=list[GestionSalida], summary="CU15 - Listar gestiones académicas")
+async def listar_gestiones(_: Administrador, sesion: Sesion):
+    return await cu15.listar_gestiones(sesion)
+
+
+@router.post("/gestiones", response_model=GestionSalida, status_code=status.HTTP_201_CREATED,
+             summary="CU15 - Crear gestión académica")
+async def crear_gestion(datos: GestionCrear, _: Administrador, sesion: Sesion):
+    return await cu15.crear_gestion(sesion, datos)
+
+
+@router.get("/gestiones/{id_gestion}", response_model=GestionSalida, summary="CU15 - Consultar gestión")
+async def consultar_gestion(_: Administrador, sesion: Sesion, id_gestion: int):
+    return await cu15.obtener_gestion(sesion, id_gestion)
+
+
+@router.patch("/gestiones/{id_gestion}", response_model=GestionSalida, summary="CU15 - Modificar gestión abierta")
+async def actualizar_gestion(datos: GestionActualizar, _: Administrador, sesion: Sesion, id_gestion: int):
+    return await cu15.actualizar_gestion(sesion, id_gestion, datos)
+
+
+@router.get("/gestiones/{id_gestion}/resumen", response_model=ResumenGestionSalida,
+            summary="CU15 - Resumen de la gestión para el panel")
+async def resumen_gestion(_: Administrador, sesion: Sesion, id_gestion: int):
+    return await cu15.resumen(sesion, id_gestion)
+
+
+@router.post("/gestiones/{id_gestion}/cerrar", response_model=CierreGestionSalida,
+             summary="CU15 - Cerrar gestión (promovidos y reprobados)")
+async def cerrar_gestion(_: Administrador, sesion: Sesion, id_gestion: int):
+    return await cu15.cerrar_gestion(sesion, id_gestion)
+
+
+@router.get("/gestiones/{id_gestion}/periodos", response_model=list[PeriodoSalida], summary="CU15 - Listar periodos")
+async def listar_periodos(_: Administrador, sesion: Sesion, id_gestion: int):
+    return await cu15.listar_periodos(sesion, id_gestion)
+
+
+@router.post("/gestiones/{id_gestion}/periodos", response_model=PeriodoSalida, status_code=status.HTTP_201_CREATED,
+             summary="CU15 - Registrar periodo")
+async def crear_periodo(datos: PeriodoCrear, _: Administrador, sesion: Sesion, id_gestion: int):
+    return await cu15.crear_periodo(sesion, id_gestion, datos)
+
+
+@router.patch("/periodos/{id_periodo}", response_model=PeriodoSalida, summary="CU15 - Modificar periodo")
+async def actualizar_periodo(datos: PeriodoActualizar, _: Administrador, sesion: Sesion, id_periodo: int):
+    return await cu15.actualizar_periodo(sesion, id_periodo, datos)
+
+
+@router.delete("/periodos/{id_periodo}", status_code=status.HTTP_204_NO_CONTENT, summary="CU15 - Eliminar periodo")
+async def eliminar_periodo(_: Administrador, sesion: Sesion, id_periodo: int):
+    await cu15.eliminar_periodo(sesion, id_periodo)
+
+
+@router.get("/gestiones/{id_gestion}/dimensiones", response_model=DimensionesSalida,
+            summary="CU15 - Consultar dimensiones de evaluación")
+async def consultar_dimensiones(_: Administrador, sesion: Sesion, id_gestion: int):
+    return await cu15.consultar_dimensiones(sesion, id_gestion)
+
+
+@router.put("/gestiones/{id_gestion}/dimensiones", response_model=DimensionesSalida,
+            summary="CU15 - Guardar dimensiones de evaluación")
+async def guardar_dimensiones(datos: DimensionesGuardar, _: Administrador, sesion: Sesion, id_gestion: int):
+    return await cu15.guardar_dimensiones(sesion, id_gestion, datos)
