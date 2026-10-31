@@ -478,3 +478,79 @@ export const useEliminarEstructura = () =>
   useMutacionEstructura(({ tipo, id }: { tipo: ElementoEstructura; id: number }) =>
     api<void>(`${RUTA_ACADEMICO}/${tipo}/${id}`, { metodo: 'DELETE' }),
   )
+
+
+// ============================================================
+// CU15 - GESTIONAR GESTIÓN ACADÉMICA (AÑO LECTIVO)
+// ============================================================
+
+import type {
+  CierreGestion,
+  DatosDimension,
+  DatosGestion,
+  DatosPeriodo,
+  Dimensiones,
+  Gestion,
+  Periodo,
+  ResumenGestion,
+} from './schemas'
+
+export const useGestiones = () =>
+  useQuery({ queryKey: ['academico', 'gestiones'], queryFn: () => api<Gestion[]>(`${RUTA_ACADEMICO}/gestiones`) })
+
+export const useResumenGestion = (id: number | null) =>
+  useQuery({
+    queryKey: ['academico', 'gestiones', id, 'resumen'],
+    queryFn: () => api<ResumenGestion>(`${RUTA_ACADEMICO}/gestiones/${id}/resumen`),
+    enabled: id !== null,
+  })
+
+export const usePeriodos = (id: number | null) =>
+  useQuery({
+    queryKey: ['academico', 'gestiones', id, 'periodos'],
+    queryFn: () => api<Periodo[]>(`${RUTA_ACADEMICO}/gestiones/${id}/periodos`),
+    enabled: id !== null,
+  })
+
+export const useDimensiones = (id: number | null) =>
+  useQuery({
+    queryKey: ['academico', 'gestiones', id, 'dimensiones'],
+    queryFn: () => api<Dimensiones>(`${RUTA_ACADEMICO}/gestiones/${id}/dimensiones`),
+    enabled: id !== null,
+  })
+
+/** Cambiar la gestión afecta inscripciones, horarios y evaluación: se refresca todo. */
+function useMutacionGestion<T, R = unknown>(mutationFn: (datos: T) => Promise<R>) {
+  const cliente = useQueryClient()
+  return useMutation({ mutationFn, onSuccess: () => cliente.invalidateQueries() })
+}
+
+export const useGuardarGestion = () =>
+  useMutacionGestion(({ id, datos }: { id?: number; datos: DatosGestion }) =>
+    api<Gestion>(id ? `${RUTA_ACADEMICO}/gestiones/${id}` : `${RUTA_ACADEMICO}/gestiones`, {
+      metodo: id ? 'PATCH' : 'POST',
+      cuerpo: datos,
+    }),
+  )
+
+export const useGuardarPeriodo = () =>
+  useMutacionGestion(({ id, id_gestion, datos }: { id?: number; id_gestion: number; datos: DatosPeriodo }) =>
+    api<Periodo>(id ? `${RUTA_ACADEMICO}/periodos/${id}` : `${RUTA_ACADEMICO}/gestiones/${id_gestion}/periodos`, {
+      metodo: id ? 'PATCH' : 'POST',
+      cuerpo: datos,
+    }),
+  )
+
+export const useEliminarPeriodo = () =>
+  useMutacionGestion((id: number) => api<void>(`${RUTA_ACADEMICO}/periodos/${id}`, { metodo: 'DELETE' }))
+
+export const useGuardarDimensiones = () =>
+  useMutacionGestion(({ id_gestion, dimensiones }: { id_gestion: number; dimensiones: DatosDimension[] }) =>
+    api<Dimensiones>(`${RUTA_ACADEMICO}/gestiones/${id_gestion}/dimensiones`, {
+      metodo: 'PUT',
+      cuerpo: { dimensiones },
+    }),
+  )
+
+export const useCerrarGestion = () =>
+  useMutacionGestion((id: number) => api<CierreGestion>(`${RUTA_ACADEMICO}/gestiones/${id}/cerrar`, { metodo: 'POST' }))
