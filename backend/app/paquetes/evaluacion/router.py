@@ -8,12 +8,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.nucleo.dependencias import Sesion, UsuarioActual, requiere_rol
+from app.nucleo.dependencias import Sesion, Usuario, UsuarioActual, requiere_rol
 
 router = APIRouter(prefix="/evaluacion", tags=["evaluacion"])
 
 # PENDIENTE: endpoints de
-#   cu22_consultar_historial_asistencia
 #   cu23_registrar_calificaciones
 #   cu24_generar_consultar_boletin
 
@@ -45,3 +44,24 @@ async def lista_asistencia(usuario: AdministradorOProfesor, sesion: Sesion, id_a
 async def guardar_asistencia(datos: AsistenciaGuardar, usuario: AdministradorOProfesor, sesion: Sesion,
                              id_asignacion: int):
     return await cu21.guardar(sesion, usuario, id_asignacion, datos)
+
+
+# ============================================================
+# CU22 - CONSULTAR HISTORIAL DE ASISTENCIA
+# ============================================================
+
+from app.paquetes.evaluacion.casos_uso import cu22_consultar_historial_asistencia as cu22
+from app.paquetes.evaluacion.schemas import EstudiantesHistorialSalida, HistorialAsistenciaSalida
+
+
+@router.get("/asistencia/historial/estudiantes", response_model=EstudiantesHistorialSalida,
+            summary="CU22 - Estudiantes cuyo historial de asistencia puede consultar el usuario")
+async def estudiantes_historial(usuario: Usuario, sesion: Sesion):
+    return await cu22.estudiantes(sesion, usuario)
+
+
+@router.get("/asistencia/historial/{ci_estudiante}", response_model=HistorialAsistenciaSalida,
+            summary="CU22 - Historial de asistencia de un estudiante con el porcentaje por materia")
+async def historial_asistencia(usuario: Usuario, sesion: Sesion, ci_estudiante: str, id_gestion: int | None = None,
+                               desde: date | None = None, hasta: date | None = None, id_materia: int | None = None):
+    return await cu22.historial(sesion, usuario, ci_estudiante.strip(), id_gestion, desde, hasta, id_materia)

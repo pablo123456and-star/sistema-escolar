@@ -102,3 +102,101 @@ async def guardar_cu21(sesion: AsyncSession, id_asignacion: int, fecha: date, re
                        IS DISTINCT FROM (EXCLUDED.estado_asistencia, EXCLUDED.observacion_asistencia)"""),
         [{"id": id_asignacion, "f": fecha, **r} for r in registros],
     )
+
+
+# ============================================================
+# CU22 - CONSULTAR HISTORIAL DE ASISTENCIA
+# ============================================================
+
+# Quién ve a quién (se agrega al WHERE de la inscripción i)
+_VISIBLES_CU22 = {
+    "administrador": "",
+    "profesor": """AND EXISTS (SELECT 1 FROM asignacion_profesor_clase a
+                                WHERE a.id_curso_asignacion = i.id_curso_inscripcion
+                                  AND a.id_gestion_asignacion = i.id_gestion_inscripcion
+                                  AND a.ci_profesor_asignacion = :usuario)""",
+    "tutor": """AND EXISTS (SELECT 1 FROM tutor_estudiante te
+                             WHERE te.ci_estudiante_tutorestudiante = i.ci_estudiante_inscripcion
+                               AND te.ci_tutor_tutorestudiante = :usuario)""",
+    "estudiante": "AND i.ci_estudiante_inscripcion = :usuario",
+}
+
+
+async def gestion_vigente_cu22(sesion: AsyncSession):
+    """La gestión abierta; si no hay, la más reciente (para seguir consultando al cerrar el año)."""
+    return (
+        await sesion.execute(
+            text("""SELECT id_gestion, anio FROM gestion
+                     ORDER BY estado_gestion = 'abierta' DESC, anio DESC LIMIT 1""")
+        )
+    ).one_or_none()
+
+
+async def gestiones_cu22(sesion: AsyncSession, ci_estudiante: str):
+    """Gestiones en las que el estudiante estuvo inscrito (la más reciente primero)."""
+    return (
+        await sesion.execute(
+            text("""SELECT g.id_gestion, g.anio, g.estado_gestion
+                      FROM inscripcion i JOIN gestion g ON g.id_gestion = i.id_gestion_inscripcion
+                     WHERE i.ci_estudiante_inscripcion = :ci
+                     ORDER BY g.anio DESC"""),
+            {"ci": ci_estudiante},
+        )
+    ).all()
+
+
+async def estudiantes_cu22(sesion: AsyncSession, id_gestion: int, rol: str, ci_usuario: str,
+                           ci_estudiante: str | None = None):
+    """Inscritos de la gestión que el usuario puede consultar (según su rol); uno solo si se indica el CI."""
+    filtro = "AND i.ci_estudiante_inscripcion = :ci" if ci_estudiante else ""
+    return (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.nombre_persona, p.apellidos, vc.nombre_curso AS curso, i.estado_inscripcion
+                       FROM inscripcion i
+                       JOIN persona p  ON p.ci = i.ci_estudiante_inscripcion
+                       JOIN v_curso vc ON vc.id_curso = i.id_curso_inscripcion
+                      WHERE i.id_gestion_inscripcion = :g {_VISIBLES_CU22[rol]} {filtro}
+                      ORDER BY vc.id_nivel, vc.orden_grado, vc.paralelo, p.apellidos, p.nombre_persona"""),
+            {"g": id_gestion, "usuario": ci_usuario, "ci": ci_estudiante},
+        )
+    ).all()
+
+
+async def materias_cu22(sesion: AsyncSession, ci_estudiante: str, id_gestion: int):
+    """Materias del curso del estudiante en esa gestión (aunque todavía no tengan asistencia)."""
+    return (
+        await sesion.execute(
+            text("""SELECT DISTINCT m.id_materia, m.nombre_materia AS materia
+                      FROM inscripcion i
+                      JOIN asignacion_profesor_clase a ON a.id_curso_asignacion = i.id_curso_inscripcion
+                                                      AND a.id_gestion_asignacion = i.id_gestion_inscripcion
+                      JOIN materia m ON m.id_materia = a.id_materia_asignacion
+                     WHERE i.ci_estudiante_inscripcion = :ci AND i.id_gestion_inscripcion = :g
+                     ORDER BY m.nombre_materia"""),
+            {"ci": ci_estudiante, "g": id_gestion},
+        )
+    ).all()
+
+
+async def historial_cu22(sesion: AsyncSession, ci_estudiante: str, id_gestion: int, desde: date | None,
+                         hasta: date | None, id_materia: int | None):
+    """Asistencia registrada del estudiante en la gestión (la más reciente primero)."""
+    filtros = ""
+    if desde:
+        filtros += " AND s.fecha_asistencia >= :desde"
+    if hasta:
+        filtros += " AND s.fecha_asistencia <= :hasta"
+    if id_materia:
+        filtros += " AND m.id_materia = :materia"
+    return (
+        await sesion.execute(
+            text(f"""SELECT s.fecha_asistencia AS fecha, m.id_materia, m.nombre_materia AS materia,
+                            s.estado_asistencia AS estado, s.observacion_asistencia AS observacion
+                       FROM asistencia s
+                       JOIN asignacion_profesor_clase a ON a.id_asignacion = s.id_asignacion_asistencia
+                       JOIN materia m ON m.id_materia = a.id_materia_asignacion
+                      WHERE s.ci_estudiante_asistencia = :ci AND a.id_gestion_asignacion = :g {filtros}
+                      ORDER BY s.fecha_asistencia DESC, m.nombre_materia"""),
+            {"ci": ci_estudiante, "g": id_gestion, "desde": desde, "hasta": hasta, "materia": id_materia},
+        )
+    ).all()

@@ -78,9 +78,12 @@ const MENU: ItemMenu[] = [
   { ruta: '/horarios/consulta', texto: 'Consultar horarios', icono: CalendarDaysIcon, roles: ['administrador'] },
   // CU21 - Registrar asistencia (el administrador puede registrar o corregir cualquier clase)
   { ruta: '/evaluacion/asistencia', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['administrador'] },
+  // CU22 - Consultar historial de asistencia
+  { ruta: '/evaluacion/historial-asistencia', texto: 'Historial de asistencia', icono: CalendarCheckIcon, roles: ['administrador'] },
   // Docente
   { ruta: '/horarios/consulta', texto: 'Mis horarios', icono: CalendarDaysIcon, roles: ['profesor'] },
   { ruta: '/evaluacion/asistencia', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['profesor'] },
+  { ruta: '/evaluacion/historial-asistencia', texto: 'Historial de asistencia', icono: CalendarCheckIcon, roles: ['profesor'] },
   { ruta: '/evaluacion/cu23', texto: 'Calificaciones', icono: NotebookPenIcon, roles: ['profesor'] },
   { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: GraduationCapIcon, roles: ['profesor'] },
   { ruta: '/personas/cu07', texto: 'Seguimiento', icono: HeartPulseIcon, roles: ['profesor'] },
@@ -88,13 +91,13 @@ const MENU: ItemMenu[] = [
   { ruta: '/horarios/consulta', texto: 'Mi horario', icono: CalendarDaysIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/cu23', texto: 'Mis calificaciones', icono: NotebookPenIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/cu24', texto: 'Boletín', icono: FileTextIcon, roles: ['estudiante'] },
-  { ruta: '/evaluacion/cu22', texto: 'Mi asistencia', icono: CalendarCheckIcon, roles: ['estudiante'] },
+  { ruta: '/evaluacion/historial-asistencia', texto: 'Mi asistencia', icono: CalendarCheckIcon, roles: ['estudiante'] },
   { ruta: '/academico/cu17', texto: 'Mis inscripciones', icono: HistoryIcon, roles: ['estudiante'] },
   // Padre/Tutor
   { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: UsersRoundIcon, roles: ['tutor'] },
   { ruta: '/horarios/consulta', texto: 'Horarios', icono: CalendarDaysIcon, roles: ['tutor'] },
   { ruta: '/evaluacion/cu24', texto: 'Boletín', icono: FileTextIcon, roles: ['tutor'] },
-  { ruta: '/evaluacion/cu22', texto: 'Asistencia', icono: CalendarCheckIcon, roles: ['tutor'] },
+  { ruta: '/evaluacion/historial-asistencia', texto: 'Asistencia', icono: CalendarCheckIcon, roles: ['tutor'] },
   { ruta: '/academico/cu17', texto: 'Inscripciones', icono: HistoryIcon, roles: ['tutor'] },
   // Comunes a varios roles
   { ruta: '/administracion/cu25', texto: 'Pagos', icono: WalletIcon, roles: ['estudiante', 'tutor'] },

@@ -81,7 +81,7 @@ export default function PanelEstudiante() {
       </Tarjeta>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Tarjeta titulo="Mi asistencia" icono={CalendarCheckIcon} enlace={{ texto: 'Ver historial', ruta: '/evaluacion/cu22' }}>
+        <Tarjeta titulo="Mi asistencia" icono={CalendarCheckIcon} enlace={{ texto: 'Ver historial', ruta: '/evaluacion/historial-asistencia' }}>
           <DetalleAsistencia asistencia={e.asistencia} />
         </Tarjeta>
         <Tarjeta titulo="Comunicados" icono={MegaphoneIcon} enlace={{ texto: 'Ver todos', ruta: '/administracion/cu27' }}>

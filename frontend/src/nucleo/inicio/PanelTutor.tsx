@@ -100,7 +100,7 @@ export default function PanelTutor() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Tarjeta titulo="Asistencia" icono={CalendarCheckIcon} enlace={{ texto: 'Historial', ruta: '/evaluacion/cu22' }}>
+        <Tarjeta titulo="Asistencia" icono={CalendarCheckIcon} enlace={{ texto: 'Historial', ruta: '/evaluacion/historial-asistencia' }}>
           <DetalleAsistencia asistencia={e.asistencia} />
         </Tarjeta>
         <Tarjeta titulo="Próximas clases" icono={CalendarClockIcon} enlace={{ texto: 'Horario', ruta: '/horarios/consulta' }}>
