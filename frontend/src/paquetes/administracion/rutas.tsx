@@ -10,7 +10,7 @@ import CU27GestionarComunicados from './casos_uso/CU27GestionarComunicados'
 const para = (roles: Rol[], elemento: ReactNode) => <RutaProtegida roles={roles}>{elemento}</RutaProtegida>
 
 export const rutasAdministracion: RouteObject[] = [
-  { path: 'administracion/cu25', element: para(['administrador', 'estudiante', 'tutor'], <CU25RegistrarPagoMensualidad />) },
+  { path: 'administracion/pagos', element: para(['administrador', 'estudiante', 'tutor'], <CU25RegistrarPagoMensualidad />) },
   { path: 'administracion/cu26', element: para(['administrador'], <CU26GestionarInventario />) },
   { path: 'administracion/cu27', element: <CU27GestionarComunicados /> },
 ]

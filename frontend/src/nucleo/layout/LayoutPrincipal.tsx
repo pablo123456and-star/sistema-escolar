@@ -100,7 +100,7 @@ const MENU: ItemMenu[] = [
   { ruta: '/evaluacion/historial-asistencia', texto: 'Asistencia', icono: CalendarCheckIcon, roles: ['tutor'] },
   { ruta: '/academico/cu17', texto: 'Inscripciones', icono: HistoryIcon, roles: ['tutor'] },
   // Comunes a varios roles
-  { ruta: '/administracion/cu25', texto: 'Pagos', icono: WalletIcon, roles: ['estudiante', 'tutor'] },
+  { ruta: '/administracion/pagos', texto: 'Pagos', icono: WalletIcon, roles: ['administrador', 'estudiante', 'tutor'] },
   { ruta: '/administracion/cu27', texto: 'Comunicados', icono: MegaphoneIcon, roles: ['profesor', 'estudiante', 'tutor'] },
 ]
 

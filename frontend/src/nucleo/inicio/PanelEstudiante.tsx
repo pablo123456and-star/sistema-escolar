@@ -73,7 +73,7 @@ export default function PanelEstudiante() {
         <AccesoRapido icono={ClipboardCheckIcon} titulo="Autoevaluación" descripcion={`Completar la del ${PERIODO_ACTUAL}`} ruta="/evaluacion/cu23" />
         <AccesoRapido icono={FileTextIcon} titulo="Boletín / libreta" descripcion="Notas de trimestres cerrados" ruta="/evaluacion/cu24" />
         <AccesoRapido icono={HistoryIcon} titulo="Mis inscripciones" descripcion="Historial por gestión" ruta="/academico/cu17" />
-        <AccesoRapido icono={WalletIcon} titulo="Mis pagos" descripcion="Cuotas y comprobantes" ruta="/administracion/cu25" />
+        <AccesoRapido icono={WalletIcon} titulo="Mis pagos" descripcion="Cuotas y comprobantes" ruta="/administracion/pagos" />
       </div>
 
       <Tarjeta titulo="Mi horario" icono={CalendarDaysIcon} enlace={{ texto: 'Ver horarios', ruta: '/horarios/consulta' }} sinRelleno>

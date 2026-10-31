@@ -94,7 +94,7 @@ export default function PanelTutor() {
         <Tarjeta titulo={`Calificaciones de ${e.nombre.split(' ')[0]}`} icono={NotebookPenIcon} enlace={{ texto: 'Ver boletín', ruta: '/evaluacion/cu24' }} sinRelleno>
           <TablaNotas notas={e.notas} />
         </Tarjeta>
-        <Tarjeta titulo="Mensualidades" icono={WalletIcon} enlace={{ texto: 'Ver pagos', ruta: '/administracion/cu25' }}>
+        <Tarjeta titulo="Mensualidades" icono={WalletIcon} enlace={{ texto: 'Ver pagos', ruta: '/administracion/pagos' }}>
           <ListaCuotas cuotas={e.cuotas} />
         </Tarjeta>
       </div>
