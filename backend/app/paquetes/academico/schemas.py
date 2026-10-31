@@ -539,6 +539,16 @@ class PeriodoActualizar(BaseModel):
     fecha_final_p: _date | None = None
     observaciones_periodo: str | None = Field(default=None, max_length=500)
 
+    @field_validator("nombre_periodo", "fecha_inicio_p", "fecha_final_p", mode="before")
+    @classmethod
+    def no_nulo(cls, valor, info):
+        # Omitir el campo deja el valor actual; enviarlo vacío (null) no se permite: son obligatorios en la BD.
+        if valor is None or (isinstance(valor, str) and not valor.strip()):
+            raise ValueError(f"{info.field_name} no puede quedar vacío.")
+        if info.field_name == "nombre_periodo":
+            return " ".join(valor.split())
+        return valor
+
 
 class PeriodoSalida(BaseModel):
     model_config = ConfigDict(from_attributes=True)

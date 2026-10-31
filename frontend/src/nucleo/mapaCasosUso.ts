@@ -36,7 +36,7 @@ export const PAQUETES: Paquete[] = [
       { codigo: 'CU12', nombre: 'Gestionar niveles educativos y cursos', ruta: '/academico/niveles-cursos' },
       { codigo: 'CU13', nombre: 'Gestionar materias y asignarlas a cursos', ruta: '/academico/materias' },
       { codigo: 'CU14', nombre: 'Asignar profesor a materia/curso', ruta: '/academico/asignaciones' },
-      { codigo: 'CU15', nombre: 'Gestionar gestión académica (año lectivo)', ruta: '/academico/cu15' },
+      { codigo: 'CU15', nombre: 'Gestionar gestión académica (año lectivo)', ruta: '/academico/gestiones' },
       { codigo: 'CU16', nombre: 'Inscribir estudiante en gestión académica', ruta: '/academico/inscripciones' },
       { codigo: 'CU17', nombre: 'Consultar historial de inscripciones', ruta: '/academico/cu17' },
     ],

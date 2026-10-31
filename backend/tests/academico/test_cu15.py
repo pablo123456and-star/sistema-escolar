@@ -52,6 +52,11 @@ async def test_cu15_periodos(cliente, admin):
         "nombre_periodo": "Solapado", "fecha_inicio_p": primero["fecha_inicio_p"], "fecha_final_p": primero["fecha_final_p"]})
     assert r.status_code == 400
 
+    # al modificar, las fechas y el nombre no pueden llegar vacíos (antes daba 500)
+    for campo in ("fecha_inicio_p", "fecha_final_p", "nombre_periodo"):
+        r = await cliente.patch(f"/academico/periodos/{primero['id_periodo']}", headers=admin, json={campo: None})
+        assert r.status_code == 422, r.text
+
     # un periodo con calificaciones no se elimina
     r = await cliente.delete(f"/academico/periodos/{primero['id_periodo']}", headers=admin)
     assert r.status_code == 409

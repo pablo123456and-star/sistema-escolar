@@ -73,7 +73,7 @@ const MENU: ItemMenu[] = [
   // CU14 - Asignar profesor a materia/curso
   { ruta: '/academico/asignaciones', texto: 'Asignación de profesores', icono: UsersIcon, roles: ['administrador'] },
   // CU15 - Gestionar gestión académica (año lectivo)
-  { ruta: '/academico/cu15', texto: 'Gestión académica', icono: CalendarRangeIcon, roles: ['administrador'] },
+  { ruta: '/academico/gestiones', texto: 'Gestión académica', icono: CalendarRangeIcon, roles: ['administrador'] },
   // CU16 - Inscribir estudiante en gestión académica
   { ruta: '/academico/inscripciones', texto: 'Inscripciones', icono: UserPlusIcon, roles: ['administrador'] },
   // CU19 - Generar horario y CU20 - Consultar horarios
