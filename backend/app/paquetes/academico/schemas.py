@@ -467,3 +467,154 @@ class EstructuraSalida(BaseModel):
 
     gestion: int | None
     niveles: list[NivelEstructuraSalida]
+
+
+# ============================================================
+# CU15 - GESTIONAR GESTIÓN ACADÉMICA (AÑO LECTIVO)
+# ============================================================
+
+from datetime import date as _date
+from decimal import Decimal as _Decimal
+from typing import Literal as _Literal
+
+
+class GestionCrear(BaseModel):
+    anio: int = Field(ge=2000, le=2100)
+    fecha_inicio_g: _date
+    fecha_final_g: _date
+    nota_minima_aprobacion: _Decimal = Field(default=_Decimal("51"), ge=0, le=100)
+
+    @model_validator(mode="after")
+    def validar_fechas(self):
+        if self.fecha_final_g <= self.fecha_inicio_g:
+            raise ValueError("La fecha final debe ser posterior a la fecha de inicio.")
+        if self.fecha_inicio_g.year != self.anio:
+            raise ValueError("El año debe coincidir con el año de la fecha de inicio.")
+        return self
+
+
+class GestionActualizar(BaseModel):
+    anio: int | None = Field(default=None, ge=2000, le=2100)
+    fecha_inicio_g: _date | None = None
+    fecha_final_g: _date | None = None
+    nota_minima_aprobacion: _Decimal | None = Field(default=None, ge=0, le=100)
+
+
+class GestionSalida(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_gestion: int
+    anio: int
+    fecha_inicio_g: _date
+    fecha_final_g: _date
+    nota_minima_aprobacion: _Decimal
+    estado_gestion: str
+    periodos: int = 0
+    inscritos: int = 0
+
+
+class PeriodoCrear(BaseModel):
+    nombre_periodo: str = Field(min_length=1, max_length=50)
+    tipo: _Literal["trimestre", "bimestre", "semestre"] | None = None
+    fecha_inicio_p: _date
+    fecha_final_p: _date
+    observaciones_periodo: str | None = Field(default=None, max_length=500)
+
+    @field_validator("nombre_periodo", mode="before")
+    @classmethod
+    def limpiar_nombre_periodo(cls, valor):
+        return " ".join(valor.split()) if isinstance(valor, str) else valor
+
+    @model_validator(mode="after")
+    def validar_fechas(self):
+        if self.fecha_final_p <= self.fecha_inicio_p:
+            raise ValueError("La fecha final del periodo debe ser posterior a la de inicio.")
+        return self
+
+
+class PeriodoActualizar(BaseModel):
+    nombre_periodo: str | None = Field(default=None, min_length=1, max_length=50)
+    tipo: _Literal["trimestre", "bimestre", "semestre"] | None = None
+    fecha_inicio_p: _date | None = None
+    fecha_final_p: _date | None = None
+    observaciones_periodo: str | None = Field(default=None, max_length=500)
+
+    @field_validator("nombre_periodo", "fecha_inicio_p", "fecha_final_p", mode="before")
+    @classmethod
+    def no_nulo(cls, valor, info):
+        # Omitir el campo deja el valor actual; enviarlo vacío (null) no se permite: son obligatorios en la BD.
+        if valor is None or (isinstance(valor, str) and not valor.strip()):
+            raise ValueError(f"{info.field_name} no puede quedar vacío.")
+        if info.field_name == "nombre_periodo":
+            return " ".join(valor.split())
+        return valor
+
+
+class PeriodoSalida(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_periodo: int
+    nombre_periodo: str
+    tipo: str | None
+    fecha_inicio_p: _date
+    fecha_final_p: _date
+    estado_periodo: str
+    observaciones_periodo: str | None
+    id_gestion_periodo: int
+
+
+class DimensionEntrada(BaseModel):
+    nombre_dimension: str = Field(min_length=1, max_length=30)
+    puntaje_maximo: _Decimal = Field(gt=0, le=100)
+    es_autoevaluacion: bool = False
+
+    @field_validator("nombre_dimension", mode="before")
+    @classmethod
+    def limpiar_nombre_dimension(cls, valor):
+        return " ".join(valor.split()) if isinstance(valor, str) else valor
+
+
+class DimensionesGuardar(BaseModel):
+    """Reemplaza todas las dimensiones de la gestión; el orden de la lista es el orden de la dimensión."""
+
+    dimensiones: list[DimensionEntrada] = Field(min_length=1, max_length=10)
+
+    @model_validator(mode="after")
+    def validar_lista(self):
+        nombres = [d.nombre_dimension.lower() for d in self.dimensiones]
+        if len(set(nombres)) != len(nombres):
+            raise ValueError("Los nombres de las dimensiones no pueden repetirse.")
+        if sum(d.es_autoevaluacion for d in self.dimensiones) > 1:
+            raise ValueError("Solo una dimensión puede ser la autoevaluación.")
+        return self
+
+
+class DimensionSalida(BaseModel):
+    id_dimension: int
+    nombre_dimension: str
+    puntaje_maximo: _Decimal
+    es_autoevaluacion: bool
+    orden_dimension: int
+
+
+class DimensionesSalida(BaseModel):
+    dimensiones: list[DimensionSalida]
+    suma_puntajes: _Decimal
+    completa: bool
+
+
+class ResumenGestionSalida(BaseModel):
+    id_gestion: int
+    anio: int
+    inscritos_activos: int
+    retirados: int
+    finalizados: int
+    promedio_general: _Decimal | None
+    total_cobrado: _Decimal
+    total_vencido: _Decimal
+
+
+class CierreGestionSalida(BaseModel):
+    id_gestion: int
+    promovidos: int
+    reprobados: int

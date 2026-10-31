@@ -59,6 +59,11 @@ MENSAJES_RESTRICCION = {
     "grado_id_nivel_educativo_grado_orden_grado_key": "El nivel ya tiene un grado con ese orden.",
     "curso_id_grado_curso_paralelo_key": "El grado ya tiene ese paralelo.",
     "curso_cupo_maximo_check": "El cupo del curso debe ser mayor a 0.",
+    # CU15 - Gestionar gestión académica
+    "gestion_anio_key": "Ya existe una gestión con ese año.",
+    "periodo_id_gestion_periodo_nombre_periodo_key": "La gestión ya tiene un periodo con ese nombre.",
+    "dimension_evaluacion_id_gestion_dimension_nombre_dimension_key": "La gestión ya tiene una dimensión con ese nombre.",
+    "uq_dimension_autoevaluacion": "Solo una dimensión puede ser la autoevaluación.",
     # CU25 - Registrar pago de mensualidad
     "arancel_id_gestion_arancel_id_nivel_arancel_key": "El nivel ya tiene arancel en esa gestión.",
     "beca_ci_estudiante_beca_id_gestion_beca_key": "El estudiante ya tiene una beca en esa gestión.",
