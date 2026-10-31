@@ -12,7 +12,7 @@ const para = (roles: Rol[], elemento: ReactNode) => <RutaProtegida roles={roles}
 
 export const rutasEvaluacion: RouteObject[] = [
   { path: 'evaluacion/asistencia', element: para(['administrador', 'profesor'], <CU21RegistrarAsistencia />) },
-  { path: 'evaluacion/cu22', element: <CU22ConsultarHistorialAsistencia /> },
+  { path: 'evaluacion/historial-asistencia', element: para(['administrador', 'profesor', 'estudiante', 'tutor'], <CU22ConsultarHistorialAsistencia />) },
   { path: 'evaluacion/cu23', element: para(['administrador', 'profesor', 'estudiante'], <CU23RegistrarCalificaciones />) },
   { path: 'evaluacion/cu24', element: para(['administrador', 'estudiante', 'tutor'], <CU24GenerarConsultarBoletin />) },
 ]

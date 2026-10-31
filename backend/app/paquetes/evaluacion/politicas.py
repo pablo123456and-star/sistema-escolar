@@ -8,7 +8,8 @@ Reglas de negocio comunes del paquete evaluacion (compartido).
 
 Las reglas propias de cada caso de uso están en el encabezado de su archivo en casos_uso/.
 
-Implementado por ahora: lo que usa el CU21 (clase propia, fecha válida, periodo cerrado).
+Implementado por ahora: lo que usa el CU21 (clase propia, fecha válida, periodo cerrado)
+y el CU22 (quién ve a quién).
 """
 from datetime import date
 
@@ -49,3 +50,27 @@ async def restriccion_edicion(sesion: AsyncSession, usuario: UsuarioActual, clas
     if periodo and periodo.estado_periodo == "cerrado" and usuario.rol != "administrador":
         return SinPermiso(f"El {periodo.nombre_periodo} está cerrado: solo el administrador puede corregir su asistencia.")
     return None
+
+
+# ============================================================
+# CU22 - CONSULTAR HISTORIAL DE ASISTENCIA
+# ============================================================
+
+_SOLO_SUYOS = {
+    "estudiante": "Solo puede consultar su propia información.",
+    "tutor": "Solo puede consultar a los estudiantes de los que es tutor.",
+    "profesor": "Solo puede consultar a los estudiantes de los cursos en los que dicta clases.",
+}
+
+
+async def estudiante_visible(sesion: AsyncSession, usuario: UsuarioActual, ci_estudiante: str, id_gestion: int | None):
+    """Inscripción del estudiante en la gestión, si el usuario puede verlo: administrador a todos,
+    profesor a los de sus cursos, tutor a sus estudiantes y estudiante a sí mismo (si no, 403)."""
+    filas = []
+    if id_gestion is not None:
+        filas = await repo.estudiantes_cu22(sesion, id_gestion, usuario.rol, usuario.ci, ci_estudiante)
+    if filas:
+        return filas[0]
+    if usuario.rol == "administrador":
+        raise NoEncontrado("El estudiante no tiene inscripción en esa gestión.")
+    raise SinPermiso(_SOLO_SUYOS.get(usuario.rol, "No tiene permiso para esta operación."))

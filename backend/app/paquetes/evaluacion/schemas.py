@@ -86,3 +86,64 @@ class AsistenciaGuardar(BaseModel):
         if len(cis) != len(set(cis)):
             raise ValueError("Un estudiante aparece más de una vez en la lista.")
         return self
+
+
+# ============================================================
+# CU22 - CONSULTAR HISTORIAL DE ASISTENCIA
+# ============================================================
+
+
+class EstudianteHistorialSalida(BaseModel):
+    ci: str
+    nombre_persona: str
+    apellidos: str
+    curso: str
+    estado_inscripcion: str
+
+
+class EstudiantesHistorialSalida(BaseModel):
+    """Estudiantes cuyo historial puede consultar el usuario (estudiante: él mismo; tutor: sus hijos)."""
+
+    gestion: int | None
+    estudiantes: list[EstudianteHistorialSalida]
+
+
+class GestionHistorialSalida(BaseModel):
+    id_gestion: int
+    anio: int
+
+
+class ConteoAsistenciaSalida(BaseModel):
+    total: int                 # clases registradas
+    presente: int
+    ausente: int
+    tardanza: int
+    justificado: int
+    porcentaje: float | None   # (presente + tardanza) / total * 100; None = sin registros
+
+
+class MateriaHistorialSalida(ConteoAsistenciaSalida):
+    id_materia: int
+    materia: str
+
+
+class RegistroHistorialSalida(BaseModel):
+    fecha: date
+    id_materia: int
+    materia: str
+    estado: EstadoAsistencia
+    observacion: str | None
+
+
+class HistorialAsistenciaSalida(BaseModel):
+    """Asistencia del estudiante en una gestión: resumen general, porcentaje por materia y detalle por fecha."""
+
+    estudiante: EstudianteHistorialSalida
+    id_gestion: int
+    gestion: int
+    gestiones: list[GestionHistorialSalida]   # gestiones en las que estuvo inscrito
+    desde: date | None
+    hasta: date | None
+    general: ConteoAsistenciaSalida
+    materias: list[MateriaHistorialSalida]
+    detalle: list[RegistroHistorialSalida]
