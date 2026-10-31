@@ -22,8 +22,9 @@ router = APIRouter(prefix="/administracion", tags=["administracion"])
 from app.paquetes.administracion.casos_uso import cu25_registrar_pago_mensualidad as cu25
 from app.paquetes.administracion.schemas import (
     ArancelActualizar, ArancelCrear, ArancelesSalida, ArancelNivelSalida, BecaActualizar, BecaCrear, BecaSalida,
-    BecasSalida, CobroEntrada, EstadoCuentaSalida, EstudiantesPagoSalida, GenerarCuotasEntrada, GenerarCuotasSalida,
-    MorososSalida, MotivoEntrada, ReciboSalida,
+    BecasSalida, CobroEntrada, ConfirmarPagoEnLineaEntrada, EstadoCuentaSalida, EstudiantesPagoSalida,
+    GenerarCuotasEntrada, GenerarCuotasSalida, MorososSalida, MotivoEntrada, PagoEnLineaEstadoSalida, PagoEnLineaSalida,
+    ReciboSalida,
 )
 
 EstudianteOTutor = Annotated[UsuarioActual, Depends(requiere_rol("estudiante", "tutor"))]
@@ -88,6 +89,24 @@ async def mis_cuotas(usuario: EstudianteOTutor, sesion: Sesion):
 @router.post("/pagos/{id_pago}/cobrar", response_model=ReciboSalida, summary="CU25 - Cobrar una cuota pendiente")
 async def cobrar(datos: CobroEntrada, usuario: Administrador, sesion: Sesion, id_pago: int):
     return await cu25.cobrar(sesion, usuario, id_pago, datos)
+
+
+@router.get("/pagos/en-linea/estado", response_model=PagoEnLineaEstadoSalida,
+            summary="CU25 - ¿Está habilitado el pago en línea (Stripe, modo de prueba)?")
+async def estado_pago_en_linea(_: ConsultaPagos):
+    return cu25.estado_pago_en_linea()
+
+
+@router.post("/pagos/en-linea/confirmar", response_model=ReciboSalida,
+             summary="CU25 - Confirmar con Stripe un pago en línea y registrar el cobro")
+async def confirmar_pago_en_linea(datos: ConfirmarPagoEnLineaEntrada, usuario: EstudianteOTutor, sesion: Sesion):
+    return await cu25.confirmar_pago_en_linea(sesion, usuario, datos)
+
+
+@router.post("/pagos/{id_pago}/pagar-en-linea", response_model=PagoEnLineaSalida,
+             summary="CU25 - Iniciar el pago en línea de una cuota (Stripe, modo de prueba)")
+async def pagar_en_linea(usuario: EstudianteOTutor, sesion: Sesion, id_pago: int):
+    return await cu25.iniciar_pago_en_linea(sesion, usuario, id_pago)
 
 
 @router.get("/pagos/{id_pago}/recibo", response_model=ReciboSalida, summary="CU25 - Recibo de pago de una cuota pagada")

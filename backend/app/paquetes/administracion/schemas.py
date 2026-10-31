@@ -12,6 +12,8 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 MetodoPago = Literal["efectivo", "transferencia", "qr", "tarjeta"]
+MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre",
+         "Noviembre", "Diciembre"]
 
 
 def _limpiar_texto(valor):
@@ -208,6 +210,20 @@ class ReciboSalida(BaseModel):
     parentesco: str | None
     cajero: str
     cargo: str | None
+
+
+# ---------- Pago en línea (Stripe, modo de prueba) ----------
+
+class PagoEnLineaEstadoSalida(BaseModel):
+    habilitado: bool              # False si no hay clave de prueba de Stripe configurada
+
+
+class PagoEnLineaSalida(BaseModel):
+    url: str                      # página de pago de Stripe a la que se redirige
+
+
+class ConfirmarPagoEnLineaEntrada(BaseModel):
+    id_sesion: str = Field(min_length=10, max_length=255, pattern=r"^cs_[A-Za-z0-9_]+$")
 
 
 # ---------- Morosos ----------

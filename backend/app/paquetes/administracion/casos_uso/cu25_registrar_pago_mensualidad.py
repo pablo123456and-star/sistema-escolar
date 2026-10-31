@@ -25,6 +25,10 @@ Reglas de negocio que implementa este caso de uso (backend):
       un pago anulado ya no se modifica.
     - Morosos: cuotas atrasadas de v_estado_pagos con el teléfono del tutor responsable.
     - Tutor y estudiante solo consultan las cuotas de sus estudiantes / las suyas.
+    - Pago en línea (Stripe, MODO DE PRUEBA): el tutor o el estudiante paga una cuota pendiente con
+      tarjeta de prueba. La cuota se da por pagada solo si Stripe confirma la sesión (no se confía en
+      el navegador) y el monto coincide; queda con método 'tarjeta', su recibo y como cajero el
+      administrativo "Pagos en línea" (script 10). Confirmar dos veces no cobra dos veces.
 
 Precondición:
     La cuota está pendiente y quien cobra es un administrativo.
@@ -40,6 +44,8 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.nucleo import pasarela_pago
+from app.nucleo.config import obtener_config
 from app.nucleo.dependencias import UsuarioActual
 from app.nucleo.errores import Conflicto, ErrorNegocio, NoEncontrado
 from app.paquetes.academico.politicas import gestion_abierta
@@ -48,9 +54,10 @@ from app.paquetes.administracion import repository as repo
 from app.paquetes.administracion.models import Arancel, Beca, PagoMensualidad
 from app.paquetes.administracion.schemas import (
     ArancelActualizar, ArancelCrear, ArancelesSalida, ArancelNivelSalida, BecaActualizar, BecaCrear, BecaSalida,
-    BecasSalida, CobroEntrada, CuotaAtrasadaSalida, CuotaSalida, EstadoCuentaSalida, EstudianteCuentaSalida,
-    EstudiantePagoSalida, EstudiantesPagoSalida, GenerarCuotasEntrada, GenerarCuotasSalida, MorosoSalida,
-    MorososSalida, MotivoEntrada, ReciboSalida, TutorPagoSalida,
+    BecasSalida, CobroEntrada, ConfirmarPagoEnLineaEntrada, CuotaAtrasadaSalida, CuotaSalida, EstadoCuentaSalida,
+    EstudianteCuentaSalida, EstudiantePagoSalida, EstudiantesPagoSalida, GenerarCuotasEntrada, GenerarCuotasSalida,
+    MESES, MorosoSalida, MorososSalida, MotivoEntrada, PagoEnLineaEstadoSalida, PagoEnLineaSalida, ReciboSalida,
+    TutorPagoSalida,
 )
 
 
@@ -314,3 +321,83 @@ async def morosos(sesion: AsyncSession) -> MorososSalida:
         m.curso = f.curso or m.curso
     lista = sorted(por_estudiante.values(), key=lambda m: (-m.dias_atraso, m.estudiante))
     return MorososSalida(total_deuda=round(sum(m.deuda for m in lista), 2), morosos=lista)
+
+
+# ------------------------------------------------------------
+# 6. PAGO EN LÍNEA (STRIPE, MODO DE PRUEBA)
+# ------------------------------------------------------------
+
+def estado_pago_en_linea() -> PagoEnLineaEstadoSalida:
+    return PagoEnLineaEstadoSalida(habilitado=pasarela_pago.habilitada())
+
+
+def _centavos(monto) -> int:
+    return int(round(float(monto) * 100))
+
+
+async def iniciar_pago_en_linea(sesion: AsyncSession, usuario: UsuarioActual, id_pago: int) -> PagoEnLineaSalida:
+    """Crea la sesión de pago de Stripe para una cuota pendiente y devuelve la página de pago."""
+    if not pasarela_pago.habilitada():
+        raise ErrorNegocio("El pago en línea no está habilitado.")
+    pago = await _cuota(sesion, id_pago)
+    await politicas.pagos_visibles(sesion, usuario, pago.ci_estudiante_pago)
+    if pago.estado_pago != "pendiente":
+        raise ErrorNegocio("Solo se pagan en línea las cuotas pendientes.")
+    estudiante = await repo.estudiante_cu25(sesion, pago.ci_estudiante_pago)
+    anio = (await repo.recibo_cu25(sesion, id_pago)).gestion
+    referencia = {"id_pago": pago.id_pago}
+    if usuario.rol == "tutor":
+        referencia["ci_tutor"] = usuario.ci
+    frontend = obtener_config().FRONTEND_URL.rstrip("/")
+    sesion_pago = await pasarela_pago.crear_sesion_pago(
+        _centavos(pago.monto),
+        f"Mensualidad de {MESES[pago.mes - 1].lower()} {anio} - {estudiante.nombre_persona} {estudiante.apellidos}",
+        referencia,
+        f"{frontend}/administracion/pagos?pago=exito&id_sesion={{CHECKOUT_SESSION_ID}}",
+        f"{frontend}/administracion/pagos?pago=cancelado",
+    )
+    return PagoEnLineaSalida(url=sesion_pago["url"])
+
+
+async def confirmar_pago_en_linea(sesion: AsyncSession, usuario: UsuarioActual,
+                                  datos: ConfirmarPagoEnLineaEntrada) -> ReciboSalida:
+    """Registra el cobro si Stripe confirma que la sesión está pagada (se puede llamar más de una vez)."""
+    sesion_pago = await pasarela_pago.obtener_sesion(datos.id_sesion)
+    try:
+        id_pago = int(sesion_pago["referencia"].get("id_pago"))
+    except (TypeError, ValueError):
+        raise ErrorNegocio("La sesión de pago no corresponde a una cuota del colegio.")
+    pago = await repo.cuota_para_cambiar_cu25(sesion, id_pago)
+    if pago is None:
+        raise NoEncontrado("No existe esa cuota.")
+    await politicas.pagos_visibles(sesion, usuario, pago.ci_estudiante_pago)
+    if not sesion_pago["pagado"]:
+        raise ErrorNegocio("El pago todavía no fue aprobado por la pasarela.")
+
+    nota = f"Pago en línea con tarjeta (Stripe, modo de prueba). Sesión {sesion_pago['id']}"
+    if pago.estado_pago == "pagado" and pago.observacion_pago and sesion_pago["id"] in pago.observacion_pago:
+        return await recibo(sesion, usuario, id_pago)          # ya registrado: no se cobra dos veces
+    if pago.estado_pago != "pendiente":
+        raise ErrorNegocio(f"La cuota ya está {pago.estado_pago}: comuníquese con la secretaría para la devolución.")
+    if (sesion_pago["monto_centavos"] != _centavos(pago.monto)
+            or (sesion_pago["moneda"] or "").lower() != obtener_config().STRIPE_MONEDA.lower()):
+        raise ErrorNegocio("El monto pagado no coincide con el de la cuota: comuníquese con la secretaría.")
+    cajero = obtener_config().PAGO_EN_LINEA_CI
+    if not await repo.es_administrativo_cu25(sesion, cajero):
+        raise ErrorNegocio("Falta registrar el administrativo de pagos en línea (script 10_pago_en_linea.sql).")
+
+    tutores = await repo.tutores_cu25(sesion, pago.ci_estudiante_pago)
+    ci_tutor = sesion_pago["referencia"].get("ci_tutor")
+    if ci_tutor not in {t.ci for t in tutores}:
+        ci_tutor = tutores[0].ci if tutores else None
+    # Se consultan antes de tocar la cuota: una consulta en medio guardaría el cambio a medias (autoflush)
+    hoy, numero = await repo.hoy_cu25(sesion), await repo.siguiente_recibo_cu25(sesion)
+    _anotar(pago, nota)
+    pago.estado_pago = "pagado"
+    pago.fecha_pago = hoy
+    pago.numero_recibo = numero
+    pago.metodo_pago = "tarjeta"
+    pago.ci_administrativo_pago = cajero
+    pago.ci_tutor_pago = ci_tutor
+    await sesion.flush()
+    return _recibo_salida(await repo.recibo_cu25(sesion, id_pago))
