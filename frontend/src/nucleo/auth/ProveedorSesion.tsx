@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { EVENTO_SESION_VENCIDA } from '@/nucleo/api'
-import { borrarToken, guardarToken, obtenerToken } from '@/nucleo/auth/almacen'
+import { borrarToken, borrarUltimoUsuario, guardarToken, guardarUltimoUsuario, obtenerToken } from '@/nucleo/auth/almacen'
 import { Contexto, type ContextoSesion } from '@/nucleo/auth/contexto'
 import { seguridadApi } from '@/paquetes/seguridad/api'
 import type { DatosLogin, Perfil } from '@/paquetes/seguridad/schemas'
@@ -30,6 +30,11 @@ export default function ProveedorSesion({ children }: { children: ReactNode }) {
       setUsuario(null)
     }
   }, [])
+
+  // Quién tuvo la sesión: si vence y vuelve a entrar la misma persona, regresa a donde estaba (CU01)
+  useEffect(() => {
+    if (usuario) guardarUltimoUsuario(usuario.id_usuario)
+  }, [usuario])
 
   // Al abrir la app: si hay un token guardado, se recupera el perfil
   useEffect(() => {
@@ -64,6 +69,7 @@ export default function ProveedorSesion({ children }: { children: ReactNode }) {
 
   const cerrarSesion = useCallback(() => {
     borrarToken()
+    borrarUltimoUsuario()
     setUsuario(null)
     clienteQuery.clear()
   }, [clienteQuery])

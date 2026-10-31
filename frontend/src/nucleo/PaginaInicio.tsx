@@ -4,8 +4,9 @@
  *   profesor      -> próximas clases, pendientes, sus estudiantes y horario
  *   estudiante    -> calificaciones, asistencia, horario, pagos y comunicados
  *   tutor         -> lo mismo, por cada estudiante vinculado
- * Los paneles de profesor, estudiante y tutor son un prototipo con datos de ejemplo
- * (nucleo/inicio/datosEjemplo.ts) hasta implementar los casos de uso que los alimentan.
+ * Estudiante y tutor ya muestran sus datos reales (horario, asistencia y mensualidades); las
+ * calificaciones y comunicados quedan reservados hasta implementar CU23, CU24 y CU27.
+ * El panel del profesor sigue siendo un prototipo con datos de ejemplo (nucleo/inicio/datosEjemplo.ts).
  */
 import { useSesion } from '@/nucleo/auth/contexto'
 import PanelAdministrador from '@/nucleo/inicio/PanelAdministrador'

@@ -1,4 +1,7 @@
 /** Cálculos de los paneles de inicio: día y hora de Bolivia, próximas clases, promedios y asistencia. */
+import type { EstadoCuenta } from '@/paquetes/administracion/schemas'
+import { MESES } from '@/paquetes/administracion/schemas'
+import type { HistorialAsistencia } from '@/paquetes/evaluacion/schemas'
 import type { BloqueHorario, Cuota, Dia, NotaMateria, ResumenAsistencia } from './datosEjemplo'
 
 const ZONA = 'America/La_Paz'
@@ -88,4 +91,39 @@ export function tonoNota(valor: number): string {
   if (valor < 51) return 'text-rose-600'
   if (valor < 70) return 'text-amber-600'
   return 'text-emerald-600'
+}
+
+// ---- Datos reales para los paneles de estudiante y tutor -------------------------
+
+const TIPO_FALTA = { ausente: 'falta', tardanza: 'atraso', justificado: 'licencia' } as const
+
+/** Asistencia de la gestión (CU22) en el formato del panel, con las últimas faltas, atrasos y licencias. */
+export function resumenAsistencia(h: HistorialAsistencia | undefined): ResumenAsistencia {
+  if (!h) return { presentes: 0, atrasos: 0, faltas: 0, licencias: 0, recientes: [] }
+  return {
+    presentes: h.general.presente,
+    atrasos: h.general.tardanza,
+    faltas: h.general.ausente,
+    licencias: h.general.justificado,
+    recientes: h.detalle
+      .filter((d) => d.estado !== 'presente')
+      .slice(0, 4)
+      .map((d) => ({ fecha: d.fecha, materia: d.materia, tipo: TIPO_FALTA[d.estado as keyof typeof TIPO_FALTA] })),
+  }
+}
+
+/** Cuotas de la gestión más reciente (CU25) en el formato del panel (sin las anuladas). */
+export function cuotasDelPanel(cuenta: EstadoCuenta | undefined): Cuota[] {
+  if (!cuenta?.cuotas.length) return []
+  const gestion = Math.max(...cuenta.cuotas.map((c) => c.anio))
+  return cuenta.cuotas
+    .filter((c) => c.anio === gestion && c.estado_actual !== 'anulado')
+    .sort((a, b) => a.mes - b.mes)
+    .map((c) => ({
+      mes: MESES[c.mes - 1],
+      monto: c.monto,
+      vence: c.fecha_vencimiento,
+      estado: c.estado_actual === 'pagado' ? 'pagada' : c.estado_actual === 'atrasado' ? 'vencida' : 'pendiente',
+      pagado_en: c.fecha_pago ?? undefined,
+    }))
 }

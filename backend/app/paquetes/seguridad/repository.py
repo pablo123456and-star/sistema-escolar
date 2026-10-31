@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.paquetes.personas.models import Administrativo, Persona
 from app.paquetes.seguridad.models import Bitacora, Rol, TokenRecuperacion, Usuario
 from app.paquetes.seguridad.politicas import (
-    ACCION_CAMBIO_PROPIO, ACCION_RESTABLECIDA, ACCION_SOLICITUD, ESPECIALIZACION,
+    ACCION_CAMBIO_PROPIO, ACCION_RESTABLECIDA, ACCION_RESTABLECIDA_CORREO, ACCION_SOLICITUD, ESPECIALIZACION,
 )
 
 
@@ -146,8 +146,9 @@ async def personas_sin_cuenta(sesion: AsyncSession, nombre_rol: str, q: str | No
 
 
 async def solicitudes_pendientes(sesion: AsyncSession, dias: int = 7):
-    """Solicitudes de recuperación de los últimos días que aún no fueron atendidas
-    (sin contraseña restablecida o cambiada después). Una por usuario, la más reciente."""
+    """Solicitudes de recuperación de los últimos días que aún no fueron atendidas (sin contraseña
+    restablecida por el administrador o por el enlace del correo, ni cambiada por el usuario después).
+    Una por usuario, la más reciente."""
     filas = (
         await sesion.execute(
             text(
@@ -160,12 +161,13 @@ async def solicitudes_pendientes(sesion: AsyncSession, dias: int = 7):
                     WHERE b.accion = :solicitud
                       AND b.fecha_hora > now() - make_interval(days => :dias)
                       AND NOT EXISTS (SELECT 1 FROM bitacora r
-                                       WHERE r.accion IN (:restablecida, :cambio)
+                                       WHERE r.accion IN (:restablecida, :restablecida_correo, :cambio)
                                          AND r.registro_id = u.id_usuario::text
                                          AND r.fecha_hora >= b.fecha_hora)
                     ORDER BY u.id_usuario, b.fecha_hora DESC"""
             ),
             {"solicitud": ACCION_SOLICITUD, "restablecida": ACCION_RESTABLECIDA,
+             "restablecida_correo": ACCION_RESTABLECIDA_CORREO,
              "cambio": ACCION_CAMBIO_PROPIO, "dias": dias},
         )
     ).all()

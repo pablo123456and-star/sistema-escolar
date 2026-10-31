@@ -34,6 +34,7 @@ import { Checkbox } from '@/componentes/ui/checkbox'
 import { Input } from '@/componentes/ui/input'
 import { Label } from '@/componentes/ui/label'
 import { mensajeError } from '@/nucleo/api'
+import { leerUltimoUsuario } from '@/nucleo/auth/almacen'
 import { useSesion } from '@/nucleo/auth/contexto'
 import { seguridadApi } from '../api'
 import MarcoAcceso from '../componentes/MarcoAcceso'
@@ -62,14 +63,18 @@ export default function CU01IniciarSesion() {
     defaultValues: { identificador: '', contrasena: '', recordar: false },
   })
 
-  const destino = (ubicacion.state as { desde?: string } | null)?.desde ?? '/'
-  if (usuario) return <Navigate to={destino} replace />
+  // Quién tenía la sesión antes de llegar al login (se borra al cerrar sesión con el botón)
+  const [anterior] = useState(leerUltimoUsuario)
+  const desde = (ubicacion.state as { desde?: string } | null)?.desde
+  // Vuelve a la página donde se cortó la sesión solo si entra la misma persona; si no, a su inicio
+  const destinoDe = (id_usuario: number) => (desde && id_usuario === anterior ? desde : '/')
+  if (usuario) return <Navigate to={destinoDe(usuario.id_usuario)} replace />
 
   const enviar = form.handleSubmit(async (datos) => {
     setError(null)
     try {
-      await iniciarSesion(datos)
-      navegar(destino, { replace: true })
+      const nuevo = await iniciarSesion(datos)
+      navegar(destinoDe(nuevo.id_usuario), { replace: true })
     } catch (e) {
       setError(mensajeError(e))
     }

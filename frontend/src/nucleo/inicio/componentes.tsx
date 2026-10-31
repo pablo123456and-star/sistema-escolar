@@ -37,13 +37,18 @@ export function Bienvenida({ extra }: { extra?: string }) {
   )
 }
 
-export function AvisoPrototipo({ casos }: { casos: string }) {
+export function AvisoPrototipo({ casos, texto }: { casos: string; texto?: string }) {
   return (
     <div className="flex items-start gap-2 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 px-3 py-2 text-xs text-blue-700">
       <SparklesIcon className="mt-px size-4 shrink-0" />
-      <p>Vista previa: la información de este panel es de ejemplo hasta implementar {casos}.</p>
+      <p>{texto ?? `Vista previa: la información de este panel es de ejemplo hasta implementar ${casos}.`}</p>
     </div>
   )
+}
+
+/** Lugar reservado para una sección cuyo caso de uso todavía no está implementado (sin datos de ejemplo). */
+export function Pendiente({ texto }: { texto: string }) {
+  return <p className="rounded-lg border border-dashed bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">{texto}</p>
 }
 
 export function Indicador({
@@ -277,7 +282,7 @@ export function TablaNotas({ notas }: { notas: NotaMateria[] }) {
 const ETIQUETA_FALTA = { falta: 'Falta', atraso: 'Atraso', licencia: 'Licencia' }
 const TONO_FALTA = { falta: 'bg-rose-50 text-rose-700', atraso: 'bg-amber-50 text-amber-700', licencia: 'bg-sky-50 text-sky-700' }
 
-export function DetalleAsistencia({ asistencia }: { asistencia: ResumenAsistencia }) {
+export function DetalleAsistencia({ asistencia, periodo = 'Septiembre' }: { asistencia: ResumenAsistencia; periodo?: string }) {
   const porcentaje = porcentajeAsistencia(asistencia)
   const conteos = [
     { texto: 'Presente', valor: asistencia.presentes, tono: 'text-emerald-600' },
@@ -290,7 +295,7 @@ export function DetalleAsistencia({ asistencia }: { asistencia: ResumenAsistenci
       <div>
         <div className="flex items-baseline justify-between">
           <span className="text-3xl font-bold text-slate-900">{porcentaje}%</span>
-          <span className="text-xs text-slate-500">Septiembre</span>
+          <span className="text-xs text-slate-500">{periodo}</span>
         </div>
         <Barra valor={porcentaje} className="mt-2" />
       </div>
@@ -316,7 +321,7 @@ export function DetalleAsistencia({ asistencia }: { asistencia: ResumenAsistenci
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-emerald-600">Sin faltas ni atrasos este mes.</p>
+        <p className="text-sm text-emerald-600">Sin faltas ni atrasos registrados.</p>
       )}
     </div>
   )
