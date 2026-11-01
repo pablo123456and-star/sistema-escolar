@@ -13,7 +13,10 @@ cffi==2.1.1
 click==8.5.0
 colorama==0.4.6
 cryptography==50.0.1
+et_xmlfile==2.0.0
 fastapi==0.141.1
+fonttools==4.68.0
+fpdf2==2.9.0
 greenlet==3.5.6
 h11==0.16.0
 httpcore2==2.13.1
@@ -21,7 +24,9 @@ httptools==0.8.0
 httpx2==2.13.1
 idna==3.20
 iniconfig==2.3.0
+openpyxl==3.1.5
 packaging==26.3
+pillow==13.0.0
 pluggy==1.6.0
 pycparser==3.0
 pydantic==2.13.5

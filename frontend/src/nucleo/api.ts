@@ -71,6 +71,41 @@ export async function api<T>(ruta: string, { metodo = 'GET', cuerpo, params }: O
   return datos as T
 }
 
+/**
+ * Descarga un archivo del backend (por ejemplo un reporte en PDF o Excel) con el token de la sesión.
+ * El nombre sale de la cabecera Content-Disposition; si no viene, se usa `nombre`.
+ */
+export async function descargar(ruta: string, nombre: string, { metodo = 'GET', cuerpo, params }: Opciones = {}): Promise<void> {
+  const token = obtenerToken()
+  const cabeceras: Record<string, string> = {}
+  if (cuerpo !== undefined) cabeceras['Content-Type'] = 'application/json'
+  if (token) cabeceras.Authorization = `Bearer ${token}`
+  let respuesta: Response
+  try {
+    respuesta = await fetch(armarUrl(ruta, params), {
+      method: metodo,
+      headers: cabeceras,
+      body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+    })
+  } catch {
+    throw new ErrorApi(0, 'No se pudo conectar con el servidor.')
+  }
+  if (!respuesta.ok) {
+    const datos = await respuesta.json().catch(() => null)
+    throw new ErrorApi(respuesta.status, typeof datos?.detalle === 'string' ? datos.detalle : 'No se pudo generar el archivo.')
+  }
+  const disposicion = respuesta.headers.get('content-disposition') ?? ''
+  const archivo = /filename="?([^"]+)"?/.exec(disposicion)?.[1] ?? nombre
+  const url = URL.createObjectURL(await respuesta.blob())
+  const enlace = document.createElement('a')
+  enlace.href = url
+  enlace.download = archivo
+  document.body.appendChild(enlace)
+  enlace.click()
+  enlace.remove()
+  URL.revokeObjectURL(url)
+}
+
 /** Mensaje legible de cualquier error (para mostrar en pantalla). */
 export function mensajeError(error: unknown): string {
   if (error instanceof ErrorApi) return error.message

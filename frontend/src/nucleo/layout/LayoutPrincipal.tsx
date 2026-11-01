@@ -33,6 +33,7 @@ import {
   UsersIcon,
   UsersRoundIcon,
   WalletIcon,
+  FileSpreadsheetIcon,
   XIcon,
   type LucideIcon,
 } from 'lucide-react'
@@ -108,6 +109,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/academico/cu17', texto: 'Inscripciones', icono: HistoryIcon, roles: ['tutor'] },
   // Comunes a varios roles
   { ruta: '/administracion/pagos', texto: 'Pagos', icono: WalletIcon, roles: ['administrador', 'estudiante', 'tutor'] },
+  // Reportes estáticos y dinámico (PDF y Excel)
+  { ruta: '/reportes', texto: 'Reportes', icono: FileSpreadsheetIcon, roles: ['administrador'] },
   { ruta: '/administracion/cu27', texto: 'Comunicados', icono: MegaphoneIcon, roles: ['profesor', 'estudiante', 'tutor'] },
 ]
 
