@@ -12,10 +12,6 @@ from app.nucleo.dependencias import Sesion, Usuario, UsuarioActual, requiere_rol
 
 router = APIRouter(prefix="/evaluacion", tags=["evaluacion"])
 
-# PENDIENTE: endpoints de
-#   cu23_registrar_calificaciones
-#   cu24_generar_consultar_boletin
-
 # ============================================================
 # CU21 - REGISTRAR ASISTENCIA DE ESTUDIANTES
 # ============================================================
@@ -65,6 +61,63 @@ async def estudiantes_historial(usuario: Usuario, sesion: Sesion):
 async def historial_asistencia(usuario: Usuario, sesion: Sesion, ci_estudiante: str, id_gestion: int | None = None,
                                desde: date | None = None, hasta: date | None = None, id_materia: int | None = None):
     return await cu22.historial(sesion, usuario, ci_estudiante.strip(), id_gestion, desde, hasta, id_materia)
+
+
+# ============================================================
+# CU23 - REGISTRAR CALIFICACIONES Y EVALUACIONES
+# ============================================================
+
+from app.paquetes.evaluacion.casos_uso import cu23_registrar_calificaciones as cu23
+from app.paquetes.evaluacion.schemas import (
+    AutoevaluacionGuardar, CambioPeriodoSalida, ClasesCalificacionSalida, MisCalificacionesSalida, PlanillaGuardar,
+    PlanillaSalida,
+)
+
+SoloEstudiante = Annotated[UsuarioActual, Depends(requiere_rol("estudiante"))]
+SoloAdministrador = Annotated[UsuarioActual, Depends(requiere_rol("administrador"))]
+
+
+@router.get("/calificaciones/clases", response_model=ClasesCalificacionSalida,
+            summary="CU23 - Clases, trimestres y dimensiones para registrar notas")
+async def clases_calificacion(usuario: AdministradorOProfesor, sesion: Sesion):
+    return await cu23.clases(sesion, usuario)
+
+
+@router.get("/calificaciones/planilla/{id_asignacion}", response_model=PlanillaSalida,
+            summary="CU23 - Planilla de notas de una clase en un trimestre")
+async def planilla_calificaciones(usuario: AdministradorOProfesor, sesion: Sesion, id_asignacion: int, id_periodo: int):
+    return await cu23.planilla(sesion, usuario, id_asignacion, id_periodo)
+
+
+@router.put("/calificaciones/planilla/{id_asignacion}", response_model=PlanillaSalida,
+            summary="CU23 - Registrar o corregir las notas de la clase")
+async def guardar_calificaciones(datos: PlanillaGuardar, usuario: AdministradorOProfesor, sesion: Sesion,
+                                 id_asignacion: int):
+    return await cu23.guardar(sesion, usuario, id_asignacion, datos)
+
+
+@router.get("/calificaciones/mias", response_model=MisCalificacionesSalida,
+            summary="CU23 - Notas del estudiante conectado en un trimestre")
+async def mis_calificaciones(usuario: SoloEstudiante, sesion: Sesion, id_periodo: int | None = None):
+    return await cu23.mis_calificaciones(sesion, usuario, id_periodo)
+
+
+@router.put("/calificaciones/autoevaluacion", response_model=MisCalificacionesSalida,
+            summary="CU23 - El estudiante registra su autoevaluación por materia")
+async def guardar_autoevaluacion(datos: AutoevaluacionGuardar, usuario: SoloEstudiante, sesion: Sesion):
+    return await cu23.guardar_autoevaluacion(sesion, usuario, datos)
+
+
+@router.post("/calificaciones/periodos/{id_periodo}/cerrar", response_model=CambioPeriodoSalida,
+             summary="CU23 - Cerrar el trimestre y emitir sus boletines (administrador)")
+async def cerrar_periodo(usuario: SoloAdministrador, sesion: Sesion, id_periodo: int):
+    return await cu23.cerrar_periodo(sesion, id_periodo)
+
+
+@router.post("/calificaciones/periodos/{id_periodo}/reabrir", response_model=CambioPeriodoSalida,
+             summary="CU23 - Reabrir un trimestre cerrado para corregir notas (administrador)")
+async def reabrir_periodo(usuario: SoloAdministrador, sesion: Sesion, id_periodo: int):
+    return await cu23.reabrir_periodo(sesion, id_periodo)
 
 
 # ============================================================

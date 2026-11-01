@@ -110,7 +110,7 @@ export const DOCENTE = {
     {
       titulo: `Notas del ${PERIODO_ACTUAL}`,
       detalle: 'Registrado: Saber. Falta: Ser, Hacer y Decidir.',
-      ruta: '/evaluacion/cu23',
+      ruta: '/evaluacion/calificaciones',
       tono: 'ambar',
     },
     {

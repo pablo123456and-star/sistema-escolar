@@ -203,6 +203,263 @@ async def historial_cu22(sesion: AsyncSession, ci_estudiante: str, id_gestion: i
 
 
 # ============================================================
+# CU23 - REGISTRAR CALIFICACIONES Y EVALUACIONES
+# ============================================================
+
+# Clase (asignación) con su gestión: para validar quién y cuándo registra notas
+_CLASE_CU23 = """
+    SELECT a.id_asignacion, a.id_curso_asignacion AS id_curso, a.id_materia_asignacion AS id_materia,
+           vc.nombre_curso AS curso, m.nombre_materia AS materia,
+           a.ci_profesor_asignacion AS ci_profesor, p.nombre_persona || ' ' || p.apellidos AS profesor,
+           a.id_gestion_asignacion AS id_gestion, g.anio, g.estado_gestion, g.fecha_inicio_g, g.fecha_final_g,
+           g.nota_minima_aprobacion AS nota_minima
+      FROM asignacion_profesor_clase a
+      JOIN v_curso vc ON vc.id_curso = a.id_curso_asignacion
+      JOIN materia m  ON m.id_materia = a.id_materia_asignacion
+      JOIN persona p  ON p.ci = a.ci_profesor_asignacion
+      JOIN gestion g  ON g.id_gestion = a.id_gestion_asignacion
+"""
+
+
+async def clases_cu23(sesion: AsyncSession, id_gestion: int, ci_profesor: str | None):
+    """Clases de la gestión: las del profesor o, si ci_profesor es None, todas."""
+    filtro = "AND a.ci_profesor_asignacion = :ci" if ci_profesor else ""
+    return (
+        await sesion.execute(
+            text(f"""{_CLASE_CU23} WHERE a.id_gestion_asignacion = :g {filtro}
+                     ORDER BY vc.id_nivel, vc.orden_grado, vc.paralelo, m.nombre_materia"""),
+            {"g": id_gestion, "ci": ci_profesor},
+        )
+    ).all()
+
+
+async def clase_cu23(sesion: AsyncSession, id_asignacion: int):
+    return (
+        await sesion.execute(text(f"{_CLASE_CU23} WHERE a.id_asignacion = :id"), {"id": id_asignacion})
+    ).one_or_none()
+
+
+async def periodo_cu23(sesion: AsyncSession, id_periodo: int):
+    """Periodo con el estado y las fechas de su gestión."""
+    return (
+        await sesion.execute(
+            text("""SELECT pe.id_periodo, pe.nombre_periodo, pe.estado_periodo, pe.fecha_inicio_p, pe.fecha_final_p,
+                           pe.fecha_inicio_p <= CURRENT_DATE AS iniciado,
+                           pe.id_gestion_periodo AS id_gestion, g.anio, g.estado_gestion,
+                           g.fecha_inicio_g, g.fecha_final_g, g.nota_minima_aprobacion AS nota_minima
+                      FROM periodo pe JOIN gestion g ON g.id_gestion = pe.id_gestion_periodo
+                     WHERE pe.id_periodo = :id"""),
+            {"id": id_periodo},
+        )
+    ).one_or_none()
+
+
+async def periodos_cu23(sesion: AsyncSession, id_gestion: int):
+    """Periodos de la gestión con cuántas notas faltan o están incompletas (inscritos x materias del curso)."""
+    return (
+        await sesion.execute(
+            text("""
+            SELECT pe.id_periodo, pe.nombre_periodo, pe.estado_periodo, pe.fecha_inicio_p, pe.fecha_final_p,
+                   pe.fecha_inicio_p <= CURRENT_DATE AS iniciado,
+                   (SELECT count(*)
+                      FROM inscripcion i
+                      JOIN asignacion_profesor_clase a ON a.id_curso_asignacion = i.id_curso_inscripcion
+                                                      AND a.id_gestion_asignacion = i.id_gestion_inscripcion
+                      LEFT JOIN v_nota_final nf ON nf.ci_estudiante = i.ci_estudiante_inscripcion
+                                               AND nf.id_materia = a.id_materia_asignacion
+                                               AND nf.id_periodo = pe.id_periodo
+                     WHERE i.id_gestion_inscripcion = pe.id_gestion_periodo
+                       AND i.estado_inscripcion <> 'retirada'
+                       AND (nf.id_calificacion IS NULL OR nf.dimensiones_registradas < nf.dimensiones_totales)
+                   ) AS notas_pendientes
+              FROM periodo pe
+             WHERE pe.id_gestion_periodo = :g
+             ORDER BY pe.fecha_inicio_p
+            """),
+            {"g": id_gestion},
+        )
+    ).all()
+
+
+async def dimensiones_cu23(sesion: AsyncSession, id_gestion: int):
+    return (
+        await sesion.execute(
+            text("""SELECT id_dimension, nombre_dimension, puntaje_maximo, es_autoevaluacion, orden_dimension
+                      FROM dimension_evaluacion WHERE id_gestion_dimension = :g
+                     ORDER BY orden_dimension, id_dimension"""),
+            {"g": id_gestion},
+        )
+    ).all()
+
+
+async def planilla_cu23(sesion: AsyncSession, id_asignacion: int, id_periodo: int):
+    """Inscritos (no retirados) del curso de la clase con sus puntajes de esa materia y periodo."""
+    return (
+        await sesion.execute(
+            text("""
+            SELECT p.ci, p.nombre_persona, p.apellidos, c.id_calificacion, c.observacion_calificacion AS observacion,
+                   coalesce((SELECT json_object_agg(d.id_dimension_detalle, d.puntaje)
+                               FROM calificacion_detalle d
+                              WHERE d.id_calificacion_detalle = c.id_calificacion), '{}') AS puntajes,
+                   nf.nota_final
+              FROM asignacion_profesor_clase a
+              JOIN inscripcion i ON i.id_curso_inscripcion = a.id_curso_asignacion
+                                AND i.id_gestion_inscripcion = a.id_gestion_asignacion
+                                AND i.estado_inscripcion <> 'retirada'
+              JOIN persona p ON p.ci = i.ci_estudiante_inscripcion
+              LEFT JOIN calificacion c ON c.ci_estudiante_calificacion = p.ci
+                                      AND c.id_materia_calificacion = a.id_materia_asignacion
+                                      AND c.id_periodo_calificacion = :p
+              LEFT JOIN v_nota_final nf ON nf.id_calificacion = c.id_calificacion
+             WHERE a.id_asignacion = :a
+             ORDER BY p.apellidos, p.nombre_persona
+            """),
+            {"a": id_asignacion, "p": id_periodo},
+        )
+    ).all()
+
+
+async def guardar_notas_cu23(sesion: AsyncSession, ci: str, id_materia: int, id_periodo: int, fecha: date,
+                             puntajes: dict[int, float | None], observacion: str | None,
+                             cambiar_observacion: bool) -> None:
+    """Registra o corrige los puntajes de un estudiante en una materia y periodo.
+
+    Solo escribe lo que cambió (así la bitácora guarda las correcciones reales). Un puntaje None
+    borra esa dimensión; si la calificación queda sin ninguna dimensión, se borra entera para que
+    no cuente como nota 0 en el boletín.
+    """
+    id_calificacion = await sesion.scalar(
+        text("""SELECT id_calificacion FROM calificacion
+                 WHERE ci_estudiante_calificacion = :ci AND id_materia_calificacion = :m
+                   AND id_periodo_calificacion = :p"""),
+        {"ci": ci, "m": id_materia, "p": id_periodo},
+    )
+    con_valor = {d: v for d, v in puntajes.items() if v is not None}
+    if id_calificacion is None:
+        if not con_valor:
+            return
+        id_calificacion = await sesion.scalar(
+            text("""INSERT INTO calificacion (ci_estudiante_calificacion, id_materia_calificacion,
+                                              id_periodo_calificacion, fecha_calificacion, observacion_calificacion)
+                    VALUES (:ci, :m, :p, :f, :obs) RETURNING id_calificacion"""),
+            {"ci": ci, "m": id_materia, "p": id_periodo, "f": fecha, "obs": observacion},
+        )
+        cambiar_observacion = False
+
+    cambios = 0
+    if con_valor:
+        resultado = await sesion.execute(
+            text("""INSERT INTO calificacion_detalle (id_calificacion_detalle, id_dimension_detalle, puntaje)
+                    VALUES (:c, :d, :v)
+                    ON CONFLICT (id_calificacion_detalle, id_dimension_detalle)
+                    DO UPDATE SET puntaje = EXCLUDED.puntaje
+                     WHERE calificacion_detalle.puntaje IS DISTINCT FROM EXCLUDED.puntaje"""),
+            [{"c": id_calificacion, "d": d, "v": v} for d, v in con_valor.items()],
+        )
+        cambios += resultado.rowcount or 0
+    borrar = [d for d, v in puntajes.items() if v is None]
+    if borrar:
+        resultado = await sesion.execute(
+            text("""DELETE FROM calificacion_detalle
+                     WHERE id_calificacion_detalle = :c AND id_dimension_detalle = ANY(:ds)"""),
+            {"c": id_calificacion, "ds": borrar},
+        )
+        cambios += resultado.rowcount or 0
+
+    quedan = await sesion.scalar(
+        text("SELECT count(*) FROM calificacion_detalle WHERE id_calificacion_detalle = :c"), {"c": id_calificacion}
+    )
+    if not quedan:
+        await sesion.execute(text("DELETE FROM calificacion WHERE id_calificacion = :c"), {"c": id_calificacion})
+        return
+    if cambios:
+        await sesion.execute(
+            text("UPDATE calificacion SET fecha_calificacion = :f WHERE id_calificacion = :c AND fecha_calificacion <> :f"),
+            {"c": id_calificacion, "f": fecha},
+        )
+    if cambiar_observacion:
+        await sesion.execute(
+            text("""UPDATE calificacion SET observacion_calificacion = CAST(:obs AS TEXT)
+                     WHERE id_calificacion = :c AND observacion_calificacion IS DISTINCT FROM CAST(:obs AS TEXT)"""),
+            {"c": id_calificacion, "obs": observacion},
+        )
+
+
+async def inscripcion_cu23(sesion: AsyncSession, ci_estudiante: str, id_gestion: int):
+    """Inscripción no retirada del estudiante en la gestión, con su curso."""
+    return (
+        await sesion.execute(
+            text("""SELECT i.id_curso_inscripcion AS id_curso, vc.nombre_curso AS curso, i.estado_inscripcion
+                      FROM inscripcion i JOIN v_curso vc ON vc.id_curso = i.id_curso_inscripcion
+                     WHERE i.ci_estudiante_inscripcion = :ci AND i.id_gestion_inscripcion = :g
+                       AND i.estado_inscripcion <> 'retirada'"""),
+            {"ci": ci_estudiante, "g": id_gestion},
+        )
+    ).one_or_none()
+
+
+async def gestion_del_estudiante_cu23(sesion: AsyncSession, ci_estudiante: str):
+    """Gestión más reciente en la que el estudiante está inscrito (la abierta si la hay)."""
+    return (
+        await sesion.execute(
+            text("""SELECT g.id_gestion, g.anio, g.estado_gestion, g.nota_minima_aprobacion AS nota_minima
+                      FROM inscripcion i JOIN gestion g ON g.id_gestion = i.id_gestion_inscripcion
+                     WHERE i.ci_estudiante_inscripcion = :ci AND i.estado_inscripcion <> 'retirada'
+                     ORDER BY g.estado_gestion = 'abierta' DESC, g.anio DESC LIMIT 1"""),
+            {"ci": ci_estudiante},
+        )
+    ).one_or_none()
+
+
+async def notas_estudiante_cu23(sesion: AsyncSession, ci_estudiante: str, id_curso: int, id_gestion: int,
+                                id_periodo: int):
+    """Materias del curso del estudiante con sus puntajes del periodo (aunque aún no tengan notas)."""
+    return (
+        await sesion.execute(
+            text("""
+            SELECT m.id_materia, m.nombre_materia AS materia, p.nombre_persona || ' ' || p.apellidos AS profesor,
+                   c.observacion_calificacion AS observacion,
+                   coalesce((SELECT json_object_agg(d.id_dimension_detalle, d.puntaje)
+                               FROM calificacion_detalle d
+                              WHERE d.id_calificacion_detalle = c.id_calificacion), '{}') AS puntajes,
+                   nf.nota_final
+              FROM asignacion_profesor_clase a
+              JOIN materia m ON m.id_materia = a.id_materia_asignacion
+              JOIN persona p ON p.ci = a.ci_profesor_asignacion
+              LEFT JOIN calificacion c ON c.ci_estudiante_calificacion = :ci
+                                      AND c.id_materia_calificacion = a.id_materia_asignacion
+                                      AND c.id_periodo_calificacion = :p
+              LEFT JOIN v_nota_final nf ON nf.id_calificacion = c.id_calificacion
+             WHERE a.id_curso_asignacion = :curso AND a.id_gestion_asignacion = :g
+             ORDER BY m.nombre_materia
+            """),
+            {"ci": ci_estudiante, "curso": id_curso, "g": id_gestion, "p": id_periodo},
+        )
+    ).all()
+
+
+async def cambiar_estado_periodo_cu23(sesion: AsyncSession, id_periodo: int, estado: str) -> None:
+    await sesion.execute(
+        text("UPDATE periodo SET estado_periodo = :e WHERE id_periodo = :id"), {"e": estado, "id": id_periodo}
+    )
+
+
+async def registrar_bitacora_cu23(sesion: AsyncSession, accion: str, id_periodo: int, antes: str, despues: str) -> None:
+    """La tabla periodo no tiene trigger de auditoría: el cierre y la reapertura se anotan a mano."""
+    await sesion.execute(
+        text("""SELECT fn_registrar_bitacora(:accion, 'EVALUACION', 'UPDATE', 'periodo', :id,
+                                             jsonb_build_object('estado_periodo', CAST(:antes AS TEXT)),
+                                             jsonb_build_object('estado_periodo', CAST(:despues AS TEXT)))"""),
+        {"accion": accion, "id": str(id_periodo), "antes": antes, "despues": despues},
+    )
+
+
+async def emitir_boletines_cu23(sesion: AsyncSession, id_periodo: int) -> int:
+    """Al cerrar el periodo se emiten los boletines de todo el periodo (INOUT p_boletines)."""
+    return (await sesion.scalar(text("CALL sp_emitir_boletines(:p, NULL, NULL)"), {"p": id_periodo})) or 0
+
+
+# ============================================================
 # CU24 - GENERAR Y CONSULTAR BOLETÍN/LIBRETA
 # ============================================================
 

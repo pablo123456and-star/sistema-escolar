@@ -74,3 +74,42 @@ async def estudiante_visible(sesion: AsyncSession, usuario: UsuarioActual, ci_es
     if usuario.rol == "administrador":
         raise NoEncontrado("El estudiante no tiene inscripción en esa gestión.")
     raise SinPermiso(_SOLO_SUYOS.get(usuario.rol, "No tiene permiso para esta operación."))
+
+
+# ============================================================
+# CU23 - REGISTRAR CALIFICACIONES Y EVALUACIONES
+# ============================================================
+
+async def clase_para_notas(sesion: AsyncSession, usuario: UsuarioActual, id_asignacion: int):
+    """La clase existe y el usuario registra sus notas (administrador o el profesor que la dicta)."""
+    clase = await repo.clase_cu23(sesion, id_asignacion)
+    if clase is None:
+        raise NoEncontrado("No existe esa clase (asignación de profesor).")
+    if usuario.rol != "administrador" and clase.ci_profesor != usuario.ci:
+        raise SinPermiso("Solo puede registrar las notas de las materias que usted dicta.")
+    return clase
+
+
+def restriccion_notas(rol: str, periodo) -> ErrorNegocio | None:
+    """Error que impide modificar las notas de ese periodo (None si se puede).
+
+    - Gestión cerrada: nadie (ya tiene sus resultados finales).
+    - Periodo que aún no empieza: nadie (evita cargar notas en el trimestre equivocado).
+    - Periodo cerrado: solo el administrador corrige.
+    Se devuelve en lugar de lanzarse para que la consulta muestre el motivo sin fallar.
+    """
+    if periodo.estado_gestion != "abierta":
+        return ErrorNegocio(f"La gestión {periodo.anio} está cerrada: sus notas ya no se modifican.")
+    if not periodo.iniciado:
+        return ErrorNegocio(f"El {periodo.nombre_periodo} aún no empieza (inicia el {periodo.fecha_inicio_p:%d/%m/%Y}).")
+    if periodo.estado_periodo == "cerrado" and rol != "administrador":
+        return SinPermiso(f"El {periodo.nombre_periodo} está cerrado: solo el Director puede corregir sus notas.")
+    return None
+
+
+def puntaje_valido(valor: float, dimension) -> str | None:
+    """Mensaje si el puntaje no está entre 0 y el máximo de la dimensión."""
+    maximo = float(dimension.puntaje_maximo)
+    if valor < 0 or valor > maximo:
+        return f"{dimension.nombre_dimension} debe estar entre 0 y {maximo:g}"
+    return None
