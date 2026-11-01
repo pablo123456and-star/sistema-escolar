@@ -17,6 +17,7 @@ from app.paquetes.academico.router import router as router_academico
 from app.paquetes.horarios.router import router as router_horarios
 from app.paquetes.evaluacion.router import router as router_evaluacion
 from app.paquetes.administracion.router import router as router_administracion
+from app.paquetes.reportes.router import router as router_reportes
 
 PREFIJO_API = "/api/v1"
 
@@ -45,10 +46,12 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],   # nombre del archivo de los reportes
 )
 registrar_manejadores(app)
 
-for router in (router_seguridad, router_personas, router_academico, router_horarios, router_evaluacion, router_administracion):
+for router in (router_seguridad, router_personas, router_academico, router_horarios, router_evaluacion, router_administracion,
+               router_reportes):
     app.include_router(router, prefix=PREFIJO_API)
 
 
