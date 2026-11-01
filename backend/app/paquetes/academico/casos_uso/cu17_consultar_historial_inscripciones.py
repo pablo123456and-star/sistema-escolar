@@ -14,7 +14,18 @@ Reglas de negocio que implementa este caso de uso (backend):
     - Otros roles (profesor, etc.): 403.
     - Si el estudiante no existe en la BD -> 404 (validado para roles con permiso).
     - Por gestión: curso, estado, fecha_inscripcion, retiro (fecha y motivo),
-      resultado final y promedio anual (calculado con AVG(nota_final) de v_nota_final).
+      resultado final, promedio anual (calculado con AVG(nota_final) de v_nota_final)
+      y la nota mínima de aprobación de esa gestión.
+    - El buscador también encuentra a los estudiantes dados de baja (su historial sigue siendo consultable).
+
+Precondición:
+    Sesión iniciada. Un tutor solo consulta a sus estudiantes; un estudiante, solo a sí mismo.
+
+Postcondición:
+    Se muestran las gestiones cursadas. No se modifica nada.
+
+Flujo: router.py -> este caso de uso -> repository.py -> BD.
+Estado: IMPLEMENTADO.
 """
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,6 +65,7 @@ async def listar_estudiantes_permitidos(
             apellidos=f.apellidos,
             codigo_rude=f.codigo_rude,
             curso_actual=f.curso_actual,
+            activo=f.activo,
         )
         for f in filas
     ]
@@ -90,6 +102,7 @@ async def consultar_historial(
             motivo_retiro=f.motivo_retiro,
             resultado_final=f.resultado_final,
             promedio_anual=f.promedio_anual,
+            nota_minima=f.nota_minima,
         )
         for f in filas_historial
     ]

@@ -4,6 +4,8 @@ Acceso a la base de datos del paquete horarios (compartido).
 Consultas y escrituras con SQLAlchemy sobre las tablas de models.py.
 Los procedimientos almacenados se ejecutan con CALL (ver basededato/sql/04).
 """
+import json
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -106,6 +108,18 @@ async def actualizar_aula(sesion: AsyncSession, aula: Aula, datos: AulaActualiza
 async def eliminar_aula(sesion: AsyncSession, aula: Aula) -> None:
     await sesion.delete(aula)
     await sesion.flush()
+
+
+async def registrar_bitacora_cu18(sesion: AsyncSession, accion: str, operacion: str, id_aula: int,
+                                  antes: dict | None, despues: dict | None) -> None:
+    """La tabla aula no tiene trigger de auditoría: altas, cambios y bajas se anotan a mano."""
+    await sesion.execute(
+        text("""SELECT fn_registrar_bitacora(:accion, 'HORARIOS', :operacion, 'aula', :id,
+                                             CAST(:antes AS jsonb), CAST(:despues AS jsonb))"""),
+        {"accion": accion, "operacion": operacion, "id": str(id_aula),
+         "antes": json.dumps(antes) if antes is not None else None,
+         "despues": json.dumps(despues) if despues is not None else None},
+    )
 
 
 

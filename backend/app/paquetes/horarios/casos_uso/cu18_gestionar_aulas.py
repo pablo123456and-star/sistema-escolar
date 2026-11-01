@@ -5,7 +5,7 @@ Paquete: horarios
 Actores ........: Administrador
 Rol del sistema : administrador
 Tablas .........: aula
-Usa de la BD ...: —
+Usa de la BD ...: fn_registrar_bitacora
 
 Reglas de negocio que implementa este caso de uso (backend):
     - Solo administrador (verificado en dependencias/router).
@@ -14,6 +14,7 @@ Reglas de negocio que implementa este caso de uso (backend):
     - No se puede ELIMINAR un aula que tiene asignaciones -> Conflicto (409) con el mensaje:
       "El aula tiene clases asignadas: márquela como inactiva".
     - Un aula en mantenimiento o inactiva no debe poder asignarse en CU14 / CU19.
+    - Cada alta, cambio y baja queda en la bitácora (módulo HORARIOS, tabla aula).
 
 Precondición:
     Sesión iniciada como administrador.
@@ -29,6 +30,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.nucleo.errores import Conflicto, ErrorNegocio, NoEncontrado
 from app.paquetes.horarios import repository as repo
 from app.paquetes.horarios.schemas import AulaActualizar, AulaCrear, AulaSalida
+
+
+def _datos(aula) -> dict:
+    """Foto del aula para la bitácora (la tabla aula no tiene trigger de auditoría)."""
+    return {"numero": aula.numero, "capacidad": aula.capacidad, "tipo_aula": aula.tipo_aula,
+            "estado_aula": aula.estado_aula}
 
 
 async def listar_aulas(sesion: AsyncSession) -> list[AulaSalida]:
@@ -58,6 +65,8 @@ async def crear_aula(sesion: AsyncSession, datos: AulaCrear) -> AulaSalida:
         raise Conflicto("Ya existe un aula con ese número.")
 
     aula = await repo.crear_aula(sesion, datos)
+    await repo.registrar_bitacora_cu18(sesion, f"Registró el aula {aula.numero}", "INSERT", aula.id_aula,
+                                       None, _datos(aula))
     return AulaSalida(
         id_aula=aula.id_aula,
         numero=aula.numero,
@@ -84,7 +93,15 @@ async def editar_aula(sesion: AsyncSession, id_aula: int, datos: AulaActualizar)
         if existente is not None and existente.id_aula != id_aula:
             raise Conflicto("Ya existe un aula con ese número.")
 
+    antes = _datos(aula)
     aula_act = await repo.actualizar_aula(sesion, aula, datos)
+    despues = _datos(aula_act)
+    if despues != antes:
+        cambiados = [k for k in despues if despues[k] != antes[k]]
+        accion = (f"Cambió el estado del aula {aula_act.numero} a {aula_act.estado_aula}"
+                  if cambiados == ["estado_aula"] else f"Modificó el aula {aula_act.numero}")
+        await repo.registrar_bitacora_cu18(sesion, accion, "UPDATE", id_aula,
+                                           {k: antes[k] for k in cambiados}, {k: despues[k] for k in cambiados})
     conteo = await repo.contar_asignaciones_aula(sesion, id_aula)
     return AulaSalida(
         id_aula=aula_act.id_aula,
@@ -106,4 +123,6 @@ async def eliminar_aula(sesion: AsyncSession, id_aula: int) -> None:
     if conteo > 0:
         raise Conflicto("El aula tiene clases asignadas: márquela como inactiva.")
 
+    antes = _datos(aula)
     await repo.eliminar_aula(sesion, aula)
+    await repo.registrar_bitacora_cu18(sesion, f"Eliminó el aula {antes['numero']}", "DELETE", id_aula, antes, None)
