@@ -200,11 +200,23 @@ class CentralizadorFilaSalida(BaseModel):
     promedio_estudiante: float | None
 
 
+class MateriaColumnaCU24(BaseModel):
+    """Columna del centralizador: una materia del curso."""
+
+    id_materia: int
+    materia: str
+
+
 class CentralizadorSalida(BaseModel):
-    """Centralizador académico: notas de un curso en un periodo."""
+    """Centralizador académico: notas de un curso en un periodo.
+
+    `materias` son las columnas (todas las del curso); cada fila trae solo las notas que existen
+    y el frontend las ubica por id_materia.
+    """
 
     curso: str
     periodo: str
+    materias: list[MateriaColumnaCU24]
     filas: list[CentralizadorFilaSalida]
 
 
@@ -213,6 +225,18 @@ class PeriodoOpcionCU24(BaseModel):
 
     id_periodo: int
     nombre_periodo: str
+    estado_periodo: str
+    anio: int
+    estado_gestion: str
+
+
+class EstudianteOpcionCU24(BaseModel):
+    """Estudiante que el usuario puede elegir para ver su boletín."""
+
+    ci: str
+    nombre_persona: str
+    apellidos: str
+    nombre_curso: str
 
 
 class CursoOpcionCU24(BaseModel):

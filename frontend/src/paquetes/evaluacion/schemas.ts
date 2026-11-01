@@ -106,6 +106,16 @@ export type FiltrosHistorial = { id_gestion?: number; desde?: string; hasta?: st
 export type PeriodoOpcionCU24 = {
   id_periodo: number
   nombre_periodo: string
+  estado_periodo: 'abierto' | 'cerrado'
+  anio: number
+  estado_gestion: string
+}
+
+export type EstudianteOpcionCU24 = {
+  ci: string
+  nombre_persona: string
+  apellidos: string
+  nombre_curso: string
 }
 
 export type CursoOpcionCU24 = {
@@ -151,8 +161,15 @@ export type FilaCentralizador = {
   promedio_estudiante: number | null
 }
 
+export type MateriaColumnaCU24 = {
+  id_materia: number
+  materia: string
+}
+
 export type Centralizador = {
   curso: string
   periodo: string
+  /** Columnas: todas las materias del curso (cada fila trae solo las notas que existen). */
+  materias: MateriaColumnaCU24[]
   filas: FilaCentralizador[]
 }

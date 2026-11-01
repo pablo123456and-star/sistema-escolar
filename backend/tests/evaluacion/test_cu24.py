@@ -178,3 +178,94 @@ async def test_cu24_opciones_cursos_profesor_403(cliente):
     cabecera = await iniciar(cliente, USUARIOS["profesor"])
     r = await cliente.get("/evaluacion/boletines/opciones/cursos", headers=cabecera)
     assert r.status_code == 403, r.text
+
+
+# ------------------------------------------------------------
+# Correcciones del PR #18 y decisiones del grupo
+# ------------------------------------------------------------
+
+async def _valor(consulta: str, **params):
+    """Devuelve un valor de la base de pruebas (dentro de la misma transacción)."""
+    async with bd._fabrica() as sesion:
+        return await sesion.scalar(text(consulta), params)
+
+
+async def test_cu24_emitir_un_curso_informa_solo_ese_curso(cliente, admin):
+    """La cantidad es la que devuelve sp_emitir_boletines (INOUT), no el total de boletines del periodo."""
+    r = await cliente.post("/evaluacion/boletines/emitir", headers=admin, params={"id_periodo": 1})
+    total = r.json()["cantidad"]
+    r = await cliente.post("/evaluacion/boletines/emitir", headers=admin, params={"id_periodo": 1, "id_curso": 14})
+    assert r.status_code == 200, r.text
+    esperado = await _valor("""
+        SELECT count(DISTINCT nf.ci_estudiante) FROM v_nota_final nf
+          JOIN inscripcion i ON i.ci_estudiante_inscripcion = nf.ci_estudiante
+                            AND i.id_gestion_inscripcion = nf.id_gestion
+         WHERE nf.id_periodo = 1 AND i.id_curso_inscripcion = 14 AND i.estado_inscripcion <> 'retirada'""")
+    assert r.json()["cantidad"] == esperado
+    assert esperado <= total
+
+
+async def test_cu24_emitir_curso_inexistente_404(cliente, admin):
+    """Emitir para un curso que no existe responde 404 (antes devolvía 200 con 0)."""
+    r = await cliente.post("/evaluacion/boletines/emitir", headers=admin,
+                           params={"id_periodo": 1, "id_curso": 999999})
+    assert r.status_code == 404, r.text
+
+
+async def test_cu24_centralizador_columnas_son_las_materias_del_curso(cliente, admin):
+    """Las columnas vienen del backend y cubren las materias de todas las filas."""
+    r = await cliente.get("/evaluacion/centralizador", headers=admin, params={"id_curso": 14, "id_periodo": 1})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    columnas = {m["id_materia"] for m in data["materias"]}
+    assert columnas
+    con_nota = {n["id_materia"] for fila in data["filas"] for n in fila["notas"]}
+    assert con_nota <= columnas
+
+
+async def test_cu24_periodos_incluyen_gestiones_anteriores(cliente, admin):
+    """Las opciones de periodo traen todas las gestiones, la más reciente primero."""
+    await _sql("""INSERT INTO gestion (anio, fecha_inicio_g, fecha_final_g, nota_minima_aprobacion, estado_gestion)
+                  VALUES (2025, '2025-02-03', '2025-12-05', 51, 'cerrada')""")
+    await _sql("""INSERT INTO periodo (nombre_periodo, tipo, fecha_inicio_p, fecha_final_p, estado_periodo, id_gestion_periodo)
+                  SELECT '1er Trimestre', 'trimestre', '2025-02-03', '2025-05-09', 'cerrado', id_gestion
+                    FROM gestion WHERE anio = 2025""")
+    r = await cliente.get("/evaluacion/boletines/opciones/periodos", headers=admin)
+    assert r.status_code == 200, r.text
+    anios = [p["anio"] for p in r.json()]
+    assert 2025 in anios
+    assert anios == sorted(anios, reverse=True)
+
+
+async def test_cu24_opciones_estudiantes_segun_rol(cliente, admin):
+    """Tutor: solo sus estudiantes; estudiante: solo él; administrador: el curso pedido."""
+    cabecera_tutor = await iniciar(cliente, USUARIOS["tutor"])
+    r = await cliente.get("/evaluacion/boletines/opciones/estudiantes", headers=cabecera_tutor,
+                          params={"id_periodo": 1})
+    assert r.status_code == 200, r.text
+    cis = {e["ci"] for e in r.json()}
+    assert "4500001" in cis
+    ajenos = await _valor("""SELECT count(*) FROM unnest(CAST(:cis AS text[])) ci
+                              WHERE NOT EXISTS (SELECT 1 FROM tutor_estudiante te
+                                                 WHERE te.ci_estudiante_tutorestudiante = ci
+                                                   AND te.ci_tutor_tutorestudiante =
+                                                       (SELECT ci_persona FROM usuario WHERE nombre_usuario = 'marioq'))""",
+                          cis=list(cis))
+    assert ajenos == 0
+
+    cabecera_est = await iniciar(cliente, USUARIOS["estudiante"])
+    r = await cliente.get("/evaluacion/boletines/opciones/estudiantes", headers=cabecera_est,
+                          params={"id_periodo": 1})
+    assert [e["ci"] for e in r.json()] == ["4500001"]
+
+    r = await cliente.get("/evaluacion/boletines/opciones/estudiantes", headers=admin,
+                          params={"id_periodo": 1, "id_curso": 14})
+    assert r.status_code == 200 and len(r.json()) > 0
+    assert len({e["nombre_curso"] for e in r.json()}) == 1
+
+
+async def test_cu24_estudiante_ajeno_403_aunque_no_haya_boletin(cliente):
+    """El permiso se valida antes de buscar: no se revela si existe el boletín de otro."""
+    cabecera_est = await iniciar(cliente, USUARIOS["estudiante"])
+    r = await cliente.get("/evaluacion/boletines/4500002", headers=cabecera_est, params={"id_periodo": 2})
+    assert r.status_code == 403, r.text

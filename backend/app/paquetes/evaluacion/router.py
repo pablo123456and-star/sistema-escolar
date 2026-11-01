@@ -72,7 +72,9 @@ async def historial_asistencia(usuario: Usuario, sesion: Sesion, ci_estudiante: 
 # ============================================================
 
 from app.paquetes.evaluacion.casos_uso import cu24_generar_consultar_boletin as cu24
-from app.paquetes.evaluacion.schemas import BoletinSalida, CentralizadorSalida, EmitirBoletinesSalida, PeriodoOpcionCU24, CursoOpcionCU24
+from app.paquetes.evaluacion.schemas import (
+    BoletinSalida, CentralizadorSalida, CursoOpcionCU24, EmitirBoletinesSalida, EstudianteOpcionCU24, PeriodoOpcionCU24,
+)
 
 Administrador = Annotated[UsuarioActual, Depends(requiere_rol("administrador"))]
 AdminTutorEstudiante = Annotated[UsuarioActual, Depends(requiere_rol("administrador", "tutor", "estudiante"))]
@@ -98,9 +100,16 @@ async def centralizador(usuario: Administrador, sesion: Sesion, id_curso: int, i
 
 
 @router.get("/boletines/opciones/periodos", response_model=list[PeriodoOpcionCU24],
-            summary="CU24 - Períodos de la gestión actual para los formularios")
+            summary="CU24 - Períodos de todas las gestiones para los formularios")
 async def opciones_periodos(usuario: AdminTutorEstudiante, sesion: Sesion):
     return await cu24.periodos(sesion)
+
+
+@router.get("/boletines/opciones/estudiantes", response_model=list[EstudianteOpcionCU24],
+            summary="CU24 - Estudiantes que el usuario puede consultar en un periodo")
+async def opciones_estudiantes(usuario: AdminTutorEstudiante, sesion: Sesion, id_periodo: int,
+                               id_curso: int | None = None):
+    return await cu24.estudiantes(sesion, usuario, id_periodo, id_curso)
 
 
 @router.get("/boletines/opciones/cursos", response_model=list[CursoOpcionCU24],
