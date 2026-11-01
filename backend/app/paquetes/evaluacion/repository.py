@@ -208,10 +208,12 @@ async def historial_cu22(sesion: AsyncSession, ci_estudiante: str, id_gestion: i
 
 
 async def periodo_cu24(sesion: AsyncSession, id_periodo: int):
-    """Obtiene el periodo (trimestre) por id."""
+    """Obtiene el periodo (trimestre) por id, con el año y la nota mínima de aprobación de su gestión."""
     return (
         await sesion.execute(
-            text("""SELECT id_periodo, nombre_periodo, estado_periodo FROM periodo WHERE id_periodo = :id"""),
+            text("""SELECT pe.id_periodo, pe.nombre_periodo, pe.estado_periodo, g.anio, g.nota_minima_aprobacion
+                      FROM periodo pe JOIN gestion g ON g.id_gestion = pe.id_gestion_periodo
+                     WHERE pe.id_periodo = :id"""),
             {"id": id_periodo},
         )
     ).one_or_none()
@@ -228,17 +230,12 @@ async def curso_cu24(sesion: AsyncSession, id_curso: int):
 
 
 async def emitir_boletines_cu24(sesion: AsyncSession, id_periodo: int, id_curso: int | None) -> int:
-    """Llama al procedimiento sp_emitir_boletines y devuelve la cantidad emitida."""
-    await sesion.execute(
+    """Llama a sp_emitir_boletines y devuelve su INOUT p_boletines (boletines emitidos o reemitidos en esta llamada)."""
+    cantidad = await sesion.scalar(
         text("CALL sp_emitir_boletines(:id_p, :id_c, NULL)"),
         {"id_p": id_periodo, "id_c": id_curso},
     )
-    # Contar cuántos boletines hay para este periodo (el procedimiento usa ON CONFLICT)
-    count = await sesion.scalar(
-        text("SELECT COUNT(*) FROM boletin WHERE id_periodo_boletin = :id_p"),
-        {"id_p": id_periodo},
-    )
-    return count or 0
+    return cantidad or 0
 
 
 async def boletin_cu24(sesion: AsyncSession, ci_estudiante: str, id_periodo: int):
@@ -294,17 +291,45 @@ async def es_mi_estudiante_cu24(sesion: AsyncSession, ci_tutor: str, ci_estudian
 
 
 async def periodos_cu24(sesion: AsyncSession):
-    """Retorna períodos de la gestión vigente/actual."""
+    """Periodos de todas las gestiones (la más reciente primero) para consultar también boletines anteriores."""
     return (
         await sesion.execute(
             text("""
-            SELECT id_periodo, nombre_periodo
-              FROM periodo
-             WHERE id_gestion_periodo = (
-                   SELECT id_gestion FROM gestion WHERE estado_gestion = 'abierta' ORDER BY anio DESC LIMIT 1
-                 )
-             ORDER BY id_periodo
+            SELECT pe.id_periodo, pe.nombre_periodo, pe.estado_periodo, g.anio, g.estado_gestion
+              FROM periodo pe
+              JOIN gestion g ON g.id_gestion = pe.id_gestion_periodo
+             ORDER BY g.anio DESC, pe.fecha_inicio_p
             """),
+        )
+    ).all()
+
+
+# Estudiantes que cada rol puede elegir en el CU24 (el administrador ve a todos)
+_VISIBLES_CU24 = {
+    "administrador": "",
+    "tutor": """AND EXISTS (SELECT 1 FROM tutor_estudiante te
+                             WHERE te.ci_estudiante_tutorestudiante = i.ci_estudiante_inscripcion
+                               AND te.ci_tutor_tutorestudiante = :usuario)""",
+    "estudiante": "AND i.ci_estudiante_inscripcion = :usuario",
+}
+
+
+async def estudiantes_cu24(sesion: AsyncSession, id_periodo: int, rol: str, ci_usuario: str, id_curso: int | None):
+    """Inscritos (no retirados) en la gestión del periodo que el usuario puede consultar, opcionalmente de un curso."""
+    filtro_curso = "AND i.id_curso_inscripcion = :c" if id_curso else ""
+    return (
+        await sesion.execute(
+            text(f"""
+            SELECT p.ci, p.nombre_persona, p.apellidos, vc.nombre_curso
+              FROM inscripcion i
+              JOIN periodo pe ON pe.id_gestion_periodo = i.id_gestion_inscripcion
+              JOIN persona p  ON p.ci = i.ci_estudiante_inscripcion
+              JOIN v_curso vc ON vc.id_curso = i.id_curso_inscripcion
+             WHERE pe.id_periodo = :p AND i.estado_inscripcion <> 'retirada'
+                   {_VISIBLES_CU24[rol]} {filtro_curso}
+             ORDER BY vc.id_nivel, vc.orden_grado, vc.paralelo, p.apellidos, p.nombre_persona
+            """),
+            {"p": id_periodo, "usuario": ci_usuario, "c": id_curso},
         )
     ).all()
 
@@ -316,14 +341,40 @@ async def cursos_cu24(sesion: AsyncSession):
             text("""
             SELECT id_curso, nombre_curso
               FROM v_curso
-             ORDER BY id_curso
+             ORDER BY id_nivel, orden_grado, paralelo
             """),
         )
     ).all()
 
 
+async def materias_centralizador_cu24(sesion: AsyncSession, id_curso: int, id_periodo: int):
+    """Columnas del centralizador: materias asignadas al curso en la gestión más las que ya tienen notas."""
+    return (
+        await sesion.execute(
+            text("""
+            SELECT DISTINCT m.id_materia, m.nombre_materia AS materia
+              FROM materia m
+             WHERE m.id_materia IN (
+                   SELECT a.id_materia_asignacion
+                     FROM asignacion_profesor_clase a
+                     JOIN periodo pe ON pe.id_gestion_periodo = a.id_gestion_asignacion
+                    WHERE a.id_curso_asignacion = :id_c AND pe.id_periodo = :id_p
+                   UNION
+                   SELECT nf.id_materia
+                     FROM v_nota_final nf
+                     JOIN inscripcion i ON i.ci_estudiante_inscripcion = nf.ci_estudiante
+                                       AND i.id_gestion_inscripcion = nf.id_gestion
+                    WHERE nf.id_periodo = :id_p AND i.id_curso_inscripcion = :id_c
+                      AND i.estado_inscripcion <> 'retirada')
+             ORDER BY m.nombre_materia
+            """),
+            {"id_c": id_curso, "id_p": id_periodo},
+        )
+    ).all()
+
+
 async def centralizador_cu24(sesion: AsyncSession, id_curso: int, id_periodo: int):
-    """Retorna las notas por estudiante y materia para el centralizador."""
+    """Notas por estudiante y materia para el centralizador (inscritos no retirados, también de gestiones cerradas)."""
     return (
         await sesion.execute(
             text("""
@@ -345,7 +396,7 @@ async def centralizador_cu24(sesion: AsyncSession, id_curso: int, id_periodo: in
               LEFT JOIN materia m ON m.id_materia = nf.id_materia
              WHERE i.id_curso_inscripcion = :id_c
                AND i.id_gestion_inscripcion = (SELECT id_gestion_periodo FROM periodo WHERE id_periodo = :id_p)
-               AND i.estado_inscripcion = 'activa'
+               AND i.estado_inscripcion <> 'retirada'
              GROUP BY p.ci, p.nombre_persona, p.apellidos
              ORDER BY p.apellidos, p.nombre_persona
             """),

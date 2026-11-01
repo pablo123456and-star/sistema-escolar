@@ -16,7 +16,7 @@ ALTER TABLE usuario
 
 COMMENT ON COLUMN usuario.intentos_fallidos IS 'Contador de intentos fallidos consecutivos de inicio de sesión.';
 COMMENT ON COLUMN usuario.bloqueado_hasta IS 'Momento hasta el cual la cuenta está temporalmente bloqueada.';
-COMMENT ON COLUMN usuario.bloqueos_consecutivos IS 'Nivel del bloqueo progresivo (0: ninguno, 1: 5min, 2: 15min, 3: 30min, 4+: 60min).';
+COMMENT ON COLUMN usuario.bloqueos_consecutivos IS 'Nivel del bloqueo progresivo (0: ninguno, 1: 15min, 2: 30min, 3: 1h, 4: 2h, 5+: 24h).';
 
 -- 2. Tabla para tokens de recuperación de contraseña de un solo uso
 CREATE TABLE IF NOT EXISTS token_recuperacion (

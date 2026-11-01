@@ -10,10 +10,12 @@ Usa de la BD ...: Trigger de auditoría de usuario (registra el acceso al actual
 
 Reglas de negocio que implementa este caso de uso (backend):
     - Protección contra fuerza bruta:
-      * 3 intentos fallidos consecutivos bloquean la cuenta temporalmente por 5 minutos.
-      * Si continúa fallando tras terminar el bloqueo, escala progresivamente:
-        1er bloqueo: 5 min, 2do: 15 min, 3er: 30 min, 4to+: 60 min.
-      * Un inicio de sesión exitoso reinicia el contador de intentos y nivel de bloqueo.
+      * 3 intentos fallidos seguidos bloquean la cuenta temporalmente. Son "seguidos" si entre
+        uno y otro pasan menos de 15 minutos (los fallos de días anteriores no se suman).
+      * Después de cada bloqueo hay otra vez 3 intentos; si vuelve a fallar, el bloqueo escala:
+        1er bloqueo: 15 min, 2do: 30 min, 3er: 1 hora, 4to: 2 horas, 5to en adelante: 24 horas.
+      * Tras 24 horas sin fallos (desde que terminó el último bloqueo) se vuelve al primer nivel.
+      * Un inicio de sesión exitoso o recuperar la contraseña por correo reinicia el contador y el nivel.
       * Mensajes claros con tiempo restante cuando la cuenta está bloqueada temporalmente.
       * Respuestas genéricas cuando las credenciales no coinciden (no revela si existe el usuario).
     - Autenticación:
@@ -52,7 +54,7 @@ from app.nucleo.correo import enviar_correo_recuperacion
 from app.nucleo.dependencias import UsuarioActual
 from app.nucleo.errores import ErrorNegocio, NoEncontrado
 from app.nucleo.seguridad import (
-    crear_token, duracion_bloqueo_minutos, formatear_tiempo_restante, generar_token_recuperacion,
+    crear_token, formatear_tiempo_restante, generar_token_recuperacion, registrar_fallo,
     hash_contrasena, hashear_token, verificar_contrasena,
 )
 from app.paquetes.seguridad import repository as repo
@@ -103,25 +105,21 @@ async def iniciar_sesion(sesion: AsyncSession, datos: IniciarSesionEntrada, ip_c
 
     if not password_ok:
         if cuenta:
-            # Incrementar contador de intentos fallidos
-            fallos = (cuenta.intentos_fallidos or 0) + 1
-            if fallos >= 3:
-                # Se activa o escala el bloqueo progresivo
-                nivel = (cuenta.bloqueos_consecutivos or 0) + 1
-                minutos = duracion_bloqueo_minutos(nivel)
-                bloqueado_hasta = ahora + timedelta(minutes=minutos)
-                await repo.registrar_intento_fallido(sesion, cuenta.id_usuario, bloqueado_hasta, nivel)
-                await sesion.commit()
-                tiempo_bloqueo = formatear_tiempo_restante(minutos * 60)
+            # Solo se suman los fallos seguidos; al tercero se bloquea con el siguiente nivel
+            intentos, nivel, bloqueado_hasta = registrar_fallo(
+                ahora, cuenta.intentos_fallidos, cuenta.bloqueos_consecutivos,
+                cuenta.ultimo_intento_fallido, cuenta.bloqueado_hasta,
+            )
+            await repo.registrar_intento_fallido(sesion, cuenta.id_usuario, intentos, bloqueado_hasta, nivel)
+            await sesion.commit()
+            if bloqueado_hasta:
+                tiempo_bloqueo = formatear_tiempo_restante(int((bloqueado_hasta - ahora).total_seconds()))
                 raise ErrorNegocio(
-                    f"Cuenta bloqueada temporalmente por 3 intentos fallidos consecutivos. Debe esperar {tiempo_bloqueo} antes de volver a intentarlo.",
+                    "Cuenta bloqueada temporalmente por 3 intentos fallidos seguidos. "
+                    f"Debe esperar {tiempo_bloqueo} antes de volver a intentarlo "
+                    "o recuperar su contraseña con «¿Olvidaste tu contraseña?».",
                     "cuenta_bloqueada",
                 )
-            else:
-                await repo.registrar_intento_fallido(
-                    sesion, cuenta.id_usuario, None, cuenta.bloqueos_consecutivos or 0
-                )
-                await sesion.commit()
         raise ErrorNegocio(MENSAJE_CREDENCIALES, "credenciales")
 
     # 3. Contraseña correcta: verificar estado general de la cuenta y persona

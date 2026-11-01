@@ -64,16 +64,63 @@ def leer_token(token: str) -> dict:
 
 
 # ---- Bloqueo progresivo y recuperación de contraseña ------------------------
+INTENTOS_PARA_BLOQUEAR = 3
 MINUTOS_BLOQUEO = {
-    1: 5,   # 1er bloqueo (tras 3 intentos fallidos)
-    2: 15,  # 2do bloqueo
-    3: 30,  # 3er bloqueo
+    1: 15,   # 1er bloqueo (tras 3 intentos fallidos seguidos)
+    2: 30,   # 2do bloqueo
+    3: 60,   # 3er bloqueo
+    4: 120,  # 4to bloqueo
 }
+MINUTOS_BLOQUEO_MAXIMO = 24 * 60  # 5to bloqueo en adelante: 24 horas
+# Dos fallos son "seguidos" si entre uno y otro pasan menos de 15 minutos
+VENTANA_FALLOS_SEGUIDOS = timedelta(minutes=15)
+# Tras 24 horas sin fallos (contadas desde que terminó el último bloqueo) se vuelve al primer nivel
+REINICIO_NIVEL_BLOQUEO = timedelta(hours=24)
 
 
 def duracion_bloqueo_minutos(nivel_bloqueo: int) -> int:
-    """Duración en minutos según el nivel de bloqueo progresivo (máx 60)."""
-    return MINUTOS_BLOQUEO.get(nivel_bloqueo, 60)
+    """Duración en minutos según el nivel de bloqueo progresivo (15 min, 30 min, 1 h, 2 h y luego 24 h)."""
+    return MINUTOS_BLOQUEO.get(nivel_bloqueo, MINUTOS_BLOQUEO_MAXIMO)
+
+
+def _con_zona(momento: datetime | None) -> datetime | None:
+    if momento is not None and momento.tzinfo is None:
+        return momento.replace(tzinfo=UTC)
+    return momento
+
+
+def registrar_fallo(
+    ahora: datetime,
+    intentos_previos: int,
+    nivel_previo: int,
+    ultimo_fallo: datetime | None,
+    bloqueado_hasta: datetime | None,
+) -> tuple[int, int, datetime | None]:
+    """Aplica un intento fallido y devuelve (intentos, nivel, bloqueado_hasta) para guardar en la cuenta.
+
+    - Solo se suman los fallos seguidos (menos de 15 minutos entre uno y otro): los de días
+      anteriores no cuentan.
+    - Al tercer fallo seguido se bloquea con el siguiente nivel y el contador vuelve a 0, así
+      después de cada bloqueo hay otra vez 3 intentos.
+    - Si pasaron 24 horas sin fallos desde el último fallo o desde que terminó el último bloqueo
+      (lo que sea más tarde), el nivel vuelve a empezar.
+    """
+    ultimo_fallo, bloqueado_hasta = _con_zona(ultimo_fallo), _con_zona(bloqueado_hasta)
+    intentos, nivel = intentos_previos or 0, nivel_previo or 0
+    if ultimo_fallo is None:
+        intentos, nivel = 0, 0
+    else:
+        referencia = max(ultimo_fallo, bloqueado_hasta or ultimo_fallo)
+        if ahora - referencia >= REINICIO_NIVEL_BLOQUEO:
+            intentos, nivel = 0, 0
+        elif ahora - ultimo_fallo >= VENTANA_FALLOS_SEGUIDOS:
+            intentos = 0
+
+    intentos += 1
+    if intentos < INTENTOS_PARA_BLOQUEAR:
+        return intentos, nivel, None
+    nivel += 1
+    return 0, nivel, ahora + timedelta(minutes=duracion_bloqueo_minutos(nivel))
 
 
 def formatear_tiempo_restante(segundos_totales: int) -> str:
@@ -82,6 +129,10 @@ def formatear_tiempo_restante(segundos_totales: int) -> str:
         return "unos segundos"
     minutos = segundos_totales // 60
     segundos = segundos_totales % 60
+    if minutos >= 60:
+        horas, minutos = divmod(minutos + (1 if segundos else 0), 60)
+        texto = f"{horas} hora{'s' if horas != 1 else ''}"
+        return f"{texto} y {minutos} min" if minutos else texto
     if minutos > 0 and segundos > 0:
         return f"{minutos} min y {segundos} s"
     if minutos > 0:

@@ -84,13 +84,14 @@ async def test_cu01_tres_intentos_fallidos_bloquean_cuenta(cliente):
     assert r2.status_code == 400
     assert r2.json()["detalle"] == "Usuario o contraseña incorrectos."
 
-    # Intento 3: se bloquea por 5 minutos
+    # Intento 3: se bloquea por 15 minutos
     r3 = await cliente.post("/seguridad/sesion", json={"identificador": "marioq", "contrasena": "erronea3"})
     assert r3.status_code == 400
     datos3 = r3.json()
     assert datos3["codigo"] == "cuenta_bloqueada"
     assert "Cuenta bloqueada temporalmente" in datos3["detalle"]
     assert "esperar" in datos3["detalle"].lower()
+    assert "15 minutos" in datos3["detalle"]
 
     # Intento 4 mientras dura el bloqueo (incluso con la contraseña correcta): sigue bloqueada
     r4 = await cliente.post("/seguridad/sesion", json={"identificador": "marioq", "contrasena": "Escuela2026"})
@@ -307,3 +308,57 @@ async def test_cu04_bitacora_filtra_y_oculta_contrasenas(cliente, admin):
     assert r.status_code == 400
     opciones = (await cliente.get("/seguridad/bitacora/opciones", headers=admin)).json()
     assert "SEGURIDAD" in opciones["modulos"]
+
+
+# ---- Bloqueo progresivo: solo cuentan los fallos seguidos --------------------------------------
+from app.nucleo.seguridad import duracion_bloqueo_minutos, formatear_tiempo_restante, registrar_fallo  # noqa: E402
+
+AHORA = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
+
+
+def test_cu01_duraciones_de_bloqueo():
+    assert [duracion_bloqueo_minutos(n) for n in range(1, 8)] == [15, 30, 60, 120, 1440, 1440, 1440]
+    assert formatear_tiempo_restante(24 * 3600) == "24 horas"
+    assert formatear_tiempo_restante(2 * 3600) == "2 horas"
+    assert formatear_tiempo_restante(15 * 60) == "15 minutos"
+
+
+def test_cu01_fallos_de_dias_anteriores_no_se_suman():
+    # 2 fallos ayer y 1 hoy: no bloquea, el contador empieza de nuevo
+    assert registrar_fallo(AHORA, 2, 0, AHORA - timedelta(days=1), None) == (1, 0, None)
+    # 2 fallos hace 20 minutos (fuera de la ventana de 15): tampoco bloquea
+    assert registrar_fallo(AHORA, 2, 0, AHORA - timedelta(minutes=20), None) == (1, 0, None)
+    # 2 fallos hace 5 minutos: el tercero seguido bloquea 15 minutos y el contador vuelve a 0
+    assert registrar_fallo(AHORA, 2, 0, AHORA - timedelta(minutes=5), None) == (0, 1, AHORA + timedelta(minutes=15))
+
+
+def test_cu01_despues_del_bloqueo_hay_tres_intentos_y_escala():
+    # Terminó el 1er bloqueo: el primer fallo no vuelve a bloquear
+    bloqueo = AHORA - timedelta(minutes=1)
+    assert registrar_fallo(AHORA, 0, 1, bloqueo - timedelta(minutes=15), bloqueo) == (1, 1, None)
+    # Tercer fallo seguido tras el 1er bloqueo: 2do bloqueo de 30 minutos
+    assert registrar_fallo(AHORA, 2, 1, AHORA - timedelta(minutes=1), bloqueo) == (0, 2, AHORA + timedelta(minutes=30))
+    # Con nivel 4 el siguiente bloqueo es de 24 horas
+    assert registrar_fallo(AHORA, 2, 4, AHORA - timedelta(minutes=1), bloqueo) == (0, 5, AHORA + timedelta(hours=24))
+
+
+def test_cu01_nivel_vuelve_a_empezar_tras_24_horas_sin_fallos():
+    # Último bloqueo terminó hace más de 24 horas: el nivel vuelve a 0 (el próximo bloqueo será de 15 min)
+    fin_bloqueo = AHORA - timedelta(hours=25)
+    assert registrar_fallo(AHORA, 0, 5, fin_bloqueo - timedelta(hours=24), fin_bloqueo) == (1, 0, None)
+    # El bloqueo de 24 horas terminó hace 1 hora: el nivel se mantiene (no vuelve a 15 min al acabar)
+    fin_bloqueo = AHORA - timedelta(hours=1)
+    assert registrar_fallo(AHORA, 0, 5, fin_bloqueo - timedelta(hours=24), fin_bloqueo) == (1, 5, None)
+
+
+async def test_cu01_fallos_de_ayer_no_bloquean_al_iniciar_sesion(cliente):
+    """Cuenta con 2 fallos de ayer guardados: un fallo hoy no la bloquea y luego entra normal."""
+    from app.nucleo import bd
+    async with bd._fabrica() as s:
+        await s.execute(update(Usuario).where(Usuario.nombre_usuario == "marioq").values(
+            intentos_fallidos=2, ultimo_intento_fallido=datetime.now(UTC) - timedelta(days=1)))
+        await s.commit()
+    r = await cliente.post("/seguridad/sesion", json={"identificador": "marioq", "contrasena": "erronea"})
+    assert r.status_code == 400 and r.json()["codigo"] == "credenciales"
+    r = await cliente.post("/seguridad/sesion", json={"identificador": "marioq", "contrasena": "Escuela2026"})
+    assert r.status_code == 200
