@@ -44,6 +44,7 @@ async def buscar_para_login(sesion: AsyncSession, identificador: str):
             Usuario.intentos_fallidos,
             Usuario.bloqueado_hasta,
             Usuario.bloqueos_consecutivos,
+            Usuario.ultimo_intento_fallido,
             Rol.nombre_rol,
             Persona.estado_persona,
             Persona.nombre_persona.label("nombres"),
@@ -248,13 +249,14 @@ async def registrar_en_bitacora(sesion: AsyncSession, accion: str, operacion: st
 
 # ---- Bloqueo por intentos fallidos y recuperación de cuentas -----------------
 async def registrar_intento_fallido(
-    sesion: AsyncSession, id_usuario: int, bloqueado_hasta: datetime | None, nivel_bloqueo: int
+    sesion: AsyncSession, id_usuario: int, intentos: int, bloqueado_hasta: datetime | None, nivel_bloqueo: int
 ) -> None:
+    """Guarda el resultado de un intento fallido (calculado con nucleo.seguridad.registrar_fallo)."""
     await sesion.execute(
         update(Usuario)
         .where(Usuario.id_usuario == id_usuario)
         .values(
-            intentos_fallidos=Usuario.intentos_fallidos + 1,
+            intentos_fallidos=intentos,
             bloqueado_hasta=bloqueado_hasta,
             bloqueos_consecutivos=nivel_bloqueo,
             ultimo_intento_fallido=datetime.now(UTC),
