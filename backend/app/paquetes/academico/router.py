@@ -530,3 +530,42 @@ async def consultar_dimensiones(_: Administrador, sesion: Sesion, id_gestion: in
             summary="CU15 - Guardar dimensiones de evaluación")
 async def guardar_dimensiones(datos: DimensionesGuardar, _: Administrador, sesion: Sesion, id_gestion: int):
     return await cu15.guardar_dimensiones(sesion, id_gestion, datos)
+
+
+# ============================================================
+# CU17 - CONSULTAR HISTORIAL DE INSCRIPCIONES
+# ============================================================
+
+from app.nucleo.dependencias import Usuario, requiere_rol
+from app.paquetes.academico.casos_uso import cu17_consultar_historial_inscripciones as cu17
+from app.paquetes.academico.schemas import (
+    EstudianteHistorialItem,
+    HistorialEstudianteSalida,
+)
+
+
+@router.get(
+    "/inscripciones/historial/estudiantes",
+    response_model=list[EstudianteHistorialItem],
+    summary="CU17 - Estudiantes que el usuario puede consultar en historial",
+)
+async def listar_estudiantes_historial(
+    usuario: Usuario,
+    sesion: Sesion,
+    buscar: str | None = None,
+):
+    return await cu17.listar_estudiantes_permitidos(sesion, usuario, buscar=buscar)
+
+
+@router.get(
+    "/inscripciones/historial/{ci}",
+    response_model=HistorialEstudianteSalida,
+    summary="CU17 - Consultar historial de inscripciones por CI de estudiante",
+)
+async def consultar_historial_inscripciones(
+    ci: str,
+    usuario: Usuario,
+    sesion: Sesion,
+):
+    return await cu17.consultar_historial(sesion, usuario, ci_estudiante=ci)
+

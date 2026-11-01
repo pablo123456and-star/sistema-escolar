@@ -16,6 +16,36 @@ export const DIAS = [
 
 export type Dia = (typeof DIAS)[number]['dia']
 
+// ---- CU18: Gestionar aulas --------------------------------------------------
+export const ESTADOS_AULA = ['disponible', 'mantenimiento', 'inactiva'] as const
+export type EstadoAula = (typeof ESTADOS_AULA)[number]
+
+export type AulaItem = {
+  id_aula: number
+  numero: string
+  capacidad: number | null
+  tipo_aula: string | null
+  estado_aula: EstadoAula
+  total_clases_asignadas: number
+}
+
+export const esquemaAula = z.object({
+  numero: z
+    .string()
+    .trim()
+    .min(1, 'El número o identificador de aula es requerido')
+    .max(10, 'Máximo 10 caracteres'),
+  capacidad: z.string().min(1, 'La capacidad es requerida'),
+  tipo_aula: z
+    .string()
+    .trim()
+    .max(30, 'Máximo 30 caracteres')
+    .optional(),
+  estado_aula: z.enum(['disponible', 'mantenimiento', 'inactiva'] as const),
+})
+
+export type DatosAula = z.infer<typeof esquemaAula>
+
 /** Bloque de horario tal como lo devuelve v_horario (horas en "HH:MM:SS"). */
 export type Bloque = {
   id_horario: number

@@ -7,8 +7,107 @@ Los procedimientos almacenados se ejecutan con CALL (ver basededato/sql/04).
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.paquetes.horarios.models import Horario
-from app.paquetes.horarios.schemas import HorarioCrear
+from app.paquetes.horarios.models import Aula, Horario
+from app.paquetes.horarios.schemas import AulaActualizar, AulaCrear, HorarioCrear
+
+
+# ---- CU18: gestionar aulas -------------------------------------------------------
+async def listar_aulas_con_conteo(sesion: AsyncSession):
+    """Lista todas las aulas con el total de clases asignadas en asignacion_profesor_clase."""
+    return (
+        await sesion.execute(
+            text(
+                """SELECT a.id_aula,
+                          a.numero,
+                          a.capacidad,
+                          a.tipo_aula,
+                          a.estado_aula,
+                          COUNT(apc.id_asignacion)::int AS total_clases_asignadas
+                     FROM aula a
+                     LEFT JOIN asignacion_profesor_clase apc ON apc.id_aula_asignacion = a.id_aula
+                    GROUP BY a.id_aula, a.numero, a.capacidad, a.tipo_aula, a.estado_aula
+                    ORDER BY a.numero ASC"""
+            )
+        )
+    ).all()
+
+
+async def obtener_aula_por_id(sesion: AsyncSession, id_aula: int) -> Aula | None:
+    return await sesion.get(Aula, id_aula)
+
+
+async def obtener_aula_detalle(sesion: AsyncSession, id_aula: int):
+    """Obtiene un aula por su ID incluyendo el conteo de asignaciones."""
+    return (
+        await sesion.execute(
+            text(
+                """SELECT a.id_aula,
+                          a.numero,
+                          a.capacidad,
+                          a.tipo_aula,
+                          a.estado_aula,
+                          COUNT(apc.id_asignacion)::int AS total_clases_asignadas
+                     FROM aula a
+                     LEFT JOIN asignacion_profesor_clase apc ON apc.id_aula_asignacion = a.id_aula
+                    WHERE a.id_aula = :id
+                    GROUP BY a.id_aula, a.numero, a.capacidad, a.tipo_aula, a.estado_aula"""
+            ),
+            {"id": id_aula},
+        )
+    ).one_or_none()
+
+
+async def obtener_aula_por_numero(sesion: AsyncSession, numero: str) -> Aula | None:
+    fila = (
+        await sesion.execute(
+            text("SELECT id_aula, numero, capacidad, tipo_aula, estado_aula FROM aula WHERE numero = :num"),
+            {"num": numero.strip()},
+        )
+    ).one_or_none()
+    return fila
+
+
+async def contar_asignaciones_aula(sesion: AsyncSession, id_aula: int) -> int:
+    return (
+        await sesion.scalar(
+            text("SELECT COUNT(*)::int FROM asignacion_profesor_clase WHERE id_aula_asignacion = :id"),
+            {"id": id_aula},
+        )
+        or 0
+    )
+
+
+async def crear_aula(sesion: AsyncSession, datos: AulaCrear) -> Aula:
+    aula = Aula(
+        numero=datos.numero.strip(),
+        capacidad=datos.capacidad,
+        tipo_aula=datos.tipo_aula.strip() if datos.tipo_aula else None,
+        estado_aula=datos.estado_aula,
+    )
+    sesion.add(aula)
+    await sesion.flush()
+    return aula
+
+
+async def actualizar_aula(sesion: AsyncSession, aula: Aula, datos: AulaActualizar) -> Aula:
+    cambios = datos.model_dump(exclude_unset=True)
+    if "numero" in cambios and cambios["numero"] is not None:
+        aula.numero = cambios["numero"].strip()
+    if "capacidad" in cambios and cambios["capacidad"] is not None:
+        aula.capacidad = cambios["capacidad"]
+    if "tipo_aula" in cambios:
+        aula.tipo_aula = cambios["tipo_aula"].strip() if cambios["tipo_aula"] else None
+    if "estado_aula" in cambios and cambios["estado_aula"] is not None:
+        aula.estado_aula = cambios["estado_aula"]
+    await sesion.flush()
+    return aula
+
+
+async def eliminar_aula(sesion: AsyncSession, aula: Aula) -> None:
+    await sesion.delete(aula)
+    await sesion.flush()
+
+
 
 
 async def existe_asignacion(sesion: AsyncSession, id_asignacion: int) -> bool:

@@ -6,7 +6,40 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+EstadoAula = Literal["disponible", "mantenimiento", "inactiva"]
 Dia = Literal["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+
+
+# ---- CU18: gestionar aulas -------------------------------------------------------
+class AulaCrear(BaseModel):
+    numero: str = Field(min_length=1, max_length=10, description="Número o identificador del aula")
+    capacidad: int = Field(gt=0, description="Capacidad máxima de estudiantes (mayor a 0)")
+    tipo_aula: str | None = Field(default=None, max_length=30, description="Tipo de aula (teoría, laboratorio, etc.)")
+    estado_aula: EstadoAula = Field(default="disponible", description="Estado inicial del aula")
+
+
+class AulaActualizar(BaseModel):
+    numero: str | None = Field(default=None, min_length=1, max_length=10)
+    capacidad: int | None = Field(default=None, gt=0)
+    tipo_aula: str | None = Field(default=None, max_length=30)
+    estado_aula: EstadoAula | None = None
+
+    @model_validator(mode="after")
+    def _algun_cambio(self):
+        if not self.model_fields_set:
+            raise ValueError("Indique al menos un dato a modificar.")
+        return self
+
+
+class AulaSalida(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_aula: int
+    numero: str
+    capacidad: int | None
+    tipo_aula: str | None
+    estado_aula: str
+    total_clases_asignadas: int = 0
 
 
 class HorarioCrear(BaseModel):
