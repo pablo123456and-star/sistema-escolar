@@ -1013,3 +1013,127 @@ async def cerrar_gestion_cu15(sesion: AsyncSession, id_gestion: int) -> dict:
     fila = (await sesion.execute(text("CALL sp_cerrar_gestion(:g, NULL)"), {"g": id_gestion})).one()
     valor = fila[0]
     return json.loads(valor) if isinstance(valor, str) else dict(valor)
+
+
+# ============================================================
+# CU17 - CONSULTAR HISTORIAL DE INSCRIPCIONES
+# ============================================================
+
+async def existe_estudiante_cu17(sesion: AsyncSession, ci: str) -> bool:
+    """Verifica si existe el estudiante en la BD."""
+    r = await sesion.scalar(
+        text("SELECT 1 FROM estudiante WHERE ci_estudiante = :ci"),
+        {"ci": ci},
+    )
+    return bool(r)
+
+
+async def es_hijo_de_tutor_cu17(sesion: AsyncSession, ci_tutor: str, ci_estudiante: str) -> bool:
+    """Comprueba si el estudiante está asignado al tutor."""
+    r = await sesion.scalar(
+        text("""SELECT 1 FROM tutor_estudiante
+                 WHERE ci_tutor_tutorestudiante = :tutor
+                   AND ci_estudiante_tutorestudiante = :estudiante"""),
+        {"tutor": ci_tutor, "estudiante": ci_estudiante},
+    )
+    return bool(r)
+
+
+async def obtener_estudiante_cu17(sesion: AsyncSession, ci: str):
+    """Retorna datos básicos de la persona estudiante."""
+    return (
+        await sesion.execute(
+            text("""SELECT p.ci, p.nombre_persona, p.apellidos, e.rude AS codigo_rude
+                     FROM estudiante e
+                     JOIN persona p ON p.ci = e.ci_estudiante
+                    WHERE e.ci_estudiante = :ci"""),
+            {"ci": ci},
+        )
+    ).one_or_none()
+
+
+async def listar_estudiantes_visibles_cu17(sesion: AsyncSession, rol: str, ci_usuario: str, buscar: str | None = None):
+    """Lista estudiantes accesibles por el usuario según su rol."""
+    params: dict = {"usuario": ci_usuario}
+    filtro_rol = ""
+    if rol == "estudiante":
+        filtro_rol = "AND e.ci_estudiante = :usuario"
+    elif rol == "tutor":
+        filtro_rol = """AND EXISTS (
+            SELECT 1 FROM tutor_estudiante te
+             WHERE te.ci_tutor_tutorestudiante = :usuario
+               AND te.ci_estudiante_tutorestudiante = e.ci_estudiante
+        )"""
+    elif rol == "administrador":
+        filtro_rol = ""
+
+    filtro_buscar = ""
+    if buscar and buscar.strip():
+        params["b"] = f"%{buscar.strip().lower()}%"
+        filtro_buscar = """AND (
+            LOWER(p.ci) LIKE :b
+            OR LOWER(p.nombre_persona) LIKE :b
+            OR LOWER(p.apellidos) LIKE :b
+            OR LOWER(p.nombre_persona || ' ' || p.apellidos) LIKE :b
+            OR LOWER(p.apellidos || ' ' || p.nombre_persona) LIKE :b
+            OR LOWER(COALESCE(e.rude, '')) LIKE :b
+        )"""
+
+    sql = f"""
+        SELECT p.ci,
+               p.nombre_persona,
+               p.apellidos,
+               p.apellidos || ' ' || p.nombre_persona AS nombre_completo,
+               e.rude AS codigo_rude,
+               (
+                   SELECT vc.nombre_curso
+                     FROM inscripcion i
+                     JOIN v_curso vc ON vc.id_curso = i.id_curso_inscripcion
+                     JOIN gestion g  ON g.id_gestion = i.id_gestion_inscripcion
+                    WHERE i.ci_estudiante_inscripcion = e.ci_estudiante
+                    ORDER BY g.anio DESC, i.id_inscripcion DESC
+                    LIMIT 1
+               ) AS curso_actual
+          FROM estudiante e
+          JOIN persona p ON p.ci = e.ci_estudiante
+         WHERE p.estado_persona = 'activo'
+           {filtro_rol}
+           {filtro_buscar}
+         ORDER BY p.apellidos, p.nombre_persona
+         LIMIT 100
+    """
+    res = await sesion.execute(text(sql), params)
+    return res.all()
+
+
+
+async def historial_inscripciones_cu17(sesion: AsyncSession, ci: str):
+    """
+    Devuelve las gestiones en que el estudiante se inscribió, ordenadas por año descendente.
+    Calcula el promedio anual a partir de la vista v_nota_final de esa gestión y estudiante.
+    """
+    sql = """
+        SELECT i.id_inscripcion,
+               g.id_gestion,
+               g.anio,
+               vc.nombre_curso AS curso,
+               i.estado_inscripcion,
+               i.fecha_inscripcion,
+               i.fecha_retiro,
+               i.motivo_retiro,
+               i.resultado_final,
+               (
+                   SELECT ROUND(AVG(nf.nota_final), 2)
+                     FROM v_nota_final nf
+                    WHERE nf.ci_estudiante = i.ci_estudiante_inscripcion
+                      AND nf.id_gestion = i.id_gestion_inscripcion
+               ) AS promedio_anual
+          FROM inscripcion i
+          JOIN gestion g  ON g.id_gestion = i.id_gestion_inscripcion
+          JOIN v_curso vc ON vc.id_curso = i.id_curso_inscripcion
+         WHERE i.ci_estudiante_inscripcion = :ci
+         ORDER BY g.anio DESC, i.fecha_inscripcion DESC
+    """
+    res = await sesion.execute(text(sql), {"ci": ci})
+    return res.all()
+

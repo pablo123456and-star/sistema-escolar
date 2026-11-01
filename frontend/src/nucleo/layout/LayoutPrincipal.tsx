@@ -77,6 +77,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/academico/gestiones', texto: 'Gestión académica', icono: CalendarRangeIcon, roles: ['administrador'] },
   // CU16 - Inscribir estudiante en gestión académica
   { ruta: '/academico/inscripciones', texto: 'Inscripciones', icono: UserPlusIcon, roles: ['administrador'] },
+  // CU18 - Gestionar aulas
+  { ruta: '/horarios/cu18', texto: 'Aulas', icono: PresentationIcon, roles: ['administrador'] },
   // CU19 - Generar horario y CU20 - Consultar horarios
   { ruta: '/horarios/generar', texto: 'Generar horario', icono: CalendarCogIcon, roles: ['administrador'] },
   { ruta: '/horarios/consulta', texto: 'Consultar horarios', icono: CalendarDaysIcon, roles: ['administrador'] },

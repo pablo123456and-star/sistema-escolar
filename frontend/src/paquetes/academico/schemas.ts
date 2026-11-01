@@ -423,3 +423,37 @@ export const esquemaDimension = z.object({
   es_autoevaluacion: z.boolean(),
 })
 export type DatosDimension = z.infer<typeof esquemaDimension>
+
+// ============================================================
+// CU17 - CONSULTAR HISTORIAL DE INSCRIPCIONES
+// ============================================================
+
+export type EstudianteHistorialItem = {
+  ci: string
+  nombre_completo: string
+  nombre_persona: string
+  apellidos: string
+  codigo_rude?: string | null
+  curso_actual?: string | null
+}
+
+export type HistorialInscripcionItem = {
+  id_inscripcion: number
+  id_gestion: number
+  anio: number
+  curso: string
+  estado_inscripcion: 'activa' | 'retirada' | 'finalizada'
+  fecha_inscripcion: string
+  fecha_retiro?: string | null
+  motivo_retiro?: string | null
+  resultado_final?: 'promovido' | 'reprobado' | null
+  promedio_anual?: number | string | null
+}
+
+export type HistorialEstudianteSalida = {
+  ci: string
+  nombre_completo: string
+  codigo_rude?: string | null
+  inscripciones: HistorialInscripcionItem[]
+}
+

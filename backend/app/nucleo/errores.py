@@ -70,6 +70,10 @@ MENSAJES_RESTRICCION = {
     "beca_porcentaje_descuento_check": "El porcentaje de beca debe ser mayor a 0 y como máximo 100.",
     "pago_mensualidad_numero_recibo_key": "El número de recibo ya fue usado.",
     "pago_mensualidad_ci_tutor_pago_ci_estudiante_pago_fkey": "La persona indicada no es tutor de ese estudiante.",
+    # CU18 - Gestionar aulas
+    "aula_numero_key": "Ya existe un aula con ese número.",
+    "aula_capacidad_check": "La capacidad del aula debe ser mayor a 0.",
+    "aula_estado_aula_check": "El estado del aula solo puede ser: disponible, mantenimiento o inactiva.",
 }
 
 

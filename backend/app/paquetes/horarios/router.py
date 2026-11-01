@@ -6,17 +6,39 @@ Cada endpoint llama a su caso de uso en casos_uso/.
 from fastapi import APIRouter, status
 
 from app.nucleo.dependencias import Administrador, Sesion, Usuario
+from app.paquetes.horarios.casos_uso import cu18_gestionar_aulas as cu18
 from app.paquetes.horarios.casos_uso import cu19_generar_horario as cu19
 from app.paquetes.horarios.casos_uso import cu20_consultar_horarios as cu20
 from app.paquetes.horarios.schemas import (
+    AulaActualizar, AulaCrear, AulaSalida,
     CursoHorarioSalida, HorarioActualizar, HorarioConsultaSalida, HorarioCrear, HorarioCursoSalida, HorarioSalida,
     OpcionesConsultaSalida,
 )
 
 router = APIRouter(prefix="/horarios", tags=["horarios"])
 
-# PENDIENTE: endpoints de
-#   cu18_gestionar_aulas
+
+# ---- CU18: gestionar aulas -------------------------------------------------------
+@router.get("/aulas", response_model=list[AulaSalida], summary="CU18 - Listar aulas con número de clases asignadas")
+async def listar_aulas(_: Administrador, sesion: Sesion):
+    return await cu18.listar_aulas(sesion)
+
+
+@router.post("/aulas", response_model=AulaSalida, status_code=status.HTTP_201_CREATED,
+             summary="CU18 - Registrar una nueva aula")
+async def crear_aula(datos: AulaCrear, _: Administrador, sesion: Sesion):
+    return await cu18.crear_aula(sesion, datos)
+
+
+@router.patch("/aulas/{id_aula}", response_model=AulaSalida, summary="CU18 - Modificar o cambiar estado de un aula")
+async def editar_aula(id_aula: int, datos: AulaActualizar, _: Administrador, sesion: Sesion):
+    return await cu18.editar_aula(sesion, id_aula, datos)
+
+
+@router.delete("/aulas/{id_aula}", status_code=status.HTTP_204_NO_CONTENT,
+               summary="CU18 - Eliminar aula sin clases asignadas")
+async def eliminar_aula(id_aula: int, _: Administrador, sesion: Sesion):
+    await cu18.eliminar_aula(sesion, id_aula)
 
 
 # ---- CU19: generar horario -------------------------------------------------------

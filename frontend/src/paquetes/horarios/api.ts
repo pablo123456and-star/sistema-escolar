@@ -5,13 +5,58 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/nucleo/api'
 import type { BloqueHorario } from '@/nucleo/inicio/datosEjemplo'
-import type { Bloque, CursoHorario, FiltroConsulta, HorarioConsulta, HorarioCurso, OpcionesConsulta } from './schemas'
+import type { AulaItem, Bloque, CursoHorario, FiltroConsulta, HorarioConsulta, HorarioCurso, OpcionesConsulta } from './schemas'
 
 const H = '/horarios'
 
 function useInvalidar() {
   const cliente = useQueryClient()
-  return () => cliente.invalidateQueries({ queryKey: ['horarios'] })
+  return () => {
+    cliente.invalidateQueries({ queryKey: ['horarios'] })
+    cliente.invalidateQueries({ queryKey: ['aulas'] })
+  }
+}
+
+// ---- CU18 -------------------------------------------------------------------
+export function useAulas() {
+  return useQuery({
+    queryKey: ['aulas'],
+    queryFn: () => api<AulaItem[]>(`${H}/aulas`),
+  })
+}
+
+export type CuerpoCrearAula = {
+  numero: string
+  capacidad: number
+  tipo_aula?: string | null
+  estado_aula: string
+}
+
+export function useCrearAula() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: (cuerpo: CuerpoCrearAula) =>
+      api<AulaItem>(`${H}/aulas`, { metodo: 'POST', cuerpo }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useEditarAula() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: ({ id_aula, cuerpo }: { id_aula: number; cuerpo: Partial<CuerpoCrearAula> }) =>
+      api<AulaItem>(`${H}/aulas/${id_aula}`, { metodo: 'PATCH', cuerpo }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useEliminarAula() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: (id_aula: number) =>
+      api<void>(`${H}/aulas/${id_aula}`, { metodo: 'DELETE' }),
+    onSuccess: invalidar,
+  })
 }
 
 // ---- CU19 -------------------------------------------------------------------

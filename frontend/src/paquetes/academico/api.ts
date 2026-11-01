@@ -40,6 +40,9 @@ import type {
   DatosGrado,
   DatosNivel,
   Estructura,
+  //CU17 - Consultar historial de inscripciones
+  EstudianteHistorialItem,
+  HistorialEstudianteSalida,
 } from './schemas'
 
 
@@ -554,3 +557,26 @@ export const useGuardarDimensiones = () =>
 
 export const useCerrarGestion = () =>
   useMutacionGestion((id: number) => api<CierreGestion>(`${RUTA_ACADEMICO}/gestiones/${id}/cerrar`, { metodo: 'POST' }))
+
+// ------------------------------------------------------------
+// CU17 - CONSULTAR HISTORIAL DE INSCRIPCIONES
+// ------------------------------------------------------------
+
+export function useEstudiantesHistorial(buscar?: string) {
+  return useQuery({
+    queryKey: ['academico', 'inscripciones', 'historial', 'estudiantes', buscar],
+    queryFn: () =>
+      api<EstudianteHistorialItem[]>(`${RUTA_ACADEMICO}/inscripciones/historial/estudiantes`, {
+        params: buscar ? { buscar } : undefined,
+      }),
+  })
+}
+
+export function useHistorialInscripciones(ci: string | null) {
+  return useQuery({
+    queryKey: ['academico', 'inscripciones', 'historial', ci],
+    queryFn: () => api<HistorialEstudianteSalida>(`${RUTA_ACADEMICO}/inscripciones/historial/${ci}`),
+    enabled: Boolean(ci && ci.trim()),
+  })
+}
+

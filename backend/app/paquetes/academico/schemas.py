@@ -618,3 +618,40 @@ class CierreGestionSalida(BaseModel):
     id_gestion: int
     promovidos: int
     reprobados: int
+
+
+# ============================================================
+# CU17 - CONSULTAR HISTORIAL DE INSCRIPCIONES
+# ============================================================
+
+from datetime import date
+from typing import Literal
+
+class EstudianteHistorialItem(BaseModel):
+    ci: str
+    nombre_completo: str
+    nombre_persona: str
+    apellidos: str
+    codigo_rude: str | None = None
+    curso_actual: str | None = None
+
+
+class HistorialInscripcionItem(BaseModel):
+    id_inscripcion: int
+    id_gestion: int
+    anio: int
+    curso: str
+    estado_inscripcion: Literal["activa", "retirada", "finalizada"]
+    fecha_inscripcion: date
+    fecha_retiro: date | None = None
+    motivo_retiro: str | None = None
+    resultado_final: Literal["promovido", "reprobado"] | None = None
+    promedio_anual: _Decimal | None = None
+
+
+class HistorialEstudianteSalida(BaseModel):
+    ci: str
+    nombre_completo: str
+    codigo_rude: str | None = None
+    inscripciones: list[HistorialInscripcionItem]
+
