@@ -114,7 +114,7 @@ export default function PanelTutor() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-            <Tarjeta titulo={`Calificaciones de ${e.nombre_persona}`} icono={NotebookPenIcon} enlace={{ texto: 'Ver boletín', ruta: '/evaluacion/cu24' }}>
+            <Tarjeta titulo={`Calificaciones de ${e.nombre_persona}`} icono={NotebookPenIcon} enlace={{ texto: 'Ver boletín', ruta: '/evaluacion/boletines' }}>
               <Pendiente texto="Las calificaciones aparecerán aquí cuando se implemente el registro de notas (CU23)." />
             </Tarjeta>
             <Tarjeta titulo="Mensualidades" icono={WalletIcon} enlace={{ texto: 'Ver pagos', ruta: '/administracion/pagos' }}>

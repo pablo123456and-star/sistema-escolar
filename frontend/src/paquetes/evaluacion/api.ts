@@ -62,3 +62,54 @@ export function useHistorialAsistencia(ci: string | null, filtros: FiltrosHistor
     enabled: !!ci,
   })
 }
+
+
+// ============================================================
+// CU24 - GENERAR Y CONSULTAR BOLETÍN/LIBRETA
+// ============================================================
+
+import type { Boletin, Centralizador, EmitirBoletines, PeriodoOpcionCU24, CursoOpcionCU24 } from './schemas'
+
+export function useOpcionesPeriodos() {
+  return useQuery({
+    queryKey: ['evaluacion', 'boletines', 'opciones', 'periodos'],
+    queryFn: () => api<PeriodoOpcionCU24[]>('/evaluacion/boletines/opciones/periodos'),
+  })
+}
+
+export function useOpcionesCursos() {
+  return useQuery({
+    queryKey: ['evaluacion', 'boletines', 'opciones', 'cursos'],
+    queryFn: () => api<CursoOpcionCU24[]>('/evaluacion/boletines/opciones/cursos'),
+  })
+}
+
+export function useEmitirBoletines() {
+  const cliente = useQueryClient()
+  return useMutation({
+    mutationFn: (params: { id_periodo: number; id_curso?: number }) =>
+      api<EmitirBoletines>('/evaluacion/boletines/emitir', {
+        metodo: 'POST',
+        params
+      }),
+    onSuccess: () => {
+      return cliente.invalidateQueries({ queryKey: ['evaluacion', 'boletin'] })
+    },
+  })
+}
+
+export function useBoletin(ci_estudiante: string | null, id_periodo: number | null) {
+  return useQuery({
+    queryKey: ['evaluacion', 'boletin', ci_estudiante, id_periodo],
+    queryFn: () => api<Boletin>(`/evaluacion/boletines/${ci_estudiante}`, { params: { id_periodo } }),
+    enabled: !!ci_estudiante && !!id_periodo,
+  })
+}
+
+export function useCentralizador(id_curso: number | null, id_periodo: number | null) {
+  return useQuery({
+    queryKey: ['evaluacion', 'centralizador', id_curso, id_periodo],
+    queryFn: () => api<Centralizador>('/evaluacion/centralizador', { params: { id_curso, id_periodo } }),
+    enabled: !!id_curso && !!id_periodo,
+  })
+}

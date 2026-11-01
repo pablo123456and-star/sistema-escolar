@@ -200,3 +200,155 @@ async def historial_cu22(sesion: AsyncSession, ci_estudiante: str, id_gestion: i
             {"ci": ci_estudiante, "g": id_gestion, "desde": desde, "hasta": hasta, "materia": id_materia},
         )
     ).all()
+
+
+# ============================================================
+# CU24 - GENERAR Y CONSULTAR BOLETÍN/LIBRETA
+# ============================================================
+
+
+async def periodo_cu24(sesion: AsyncSession, id_periodo: int):
+    """Obtiene el periodo (trimestre) por id."""
+    return (
+        await sesion.execute(
+            text("""SELECT id_periodo, nombre_periodo, estado_periodo FROM periodo WHERE id_periodo = :id"""),
+            {"id": id_periodo},
+        )
+    ).one_or_none()
+
+
+async def curso_cu24(sesion: AsyncSession, id_curso: int):
+    """Obtiene el curso con su nombre completo."""
+    return (
+        await sesion.execute(
+            text("SELECT id_curso, nombre_curso FROM v_curso WHERE id_curso = :id"),
+            {"id": id_curso},
+        )
+    ).one_or_none()
+
+
+async def emitir_boletines_cu24(sesion: AsyncSession, id_periodo: int, id_curso: int | None) -> int:
+    """Llama al procedimiento sp_emitir_boletines y devuelve la cantidad emitida."""
+    await sesion.execute(
+        text("CALL sp_emitir_boletines(:id_p, :id_c, NULL)"),
+        {"id_p": id_periodo, "id_c": id_curso},
+    )
+    # Contar cuántos boletines hay para este periodo (el procedimiento usa ON CONFLICT)
+    count = await sesion.scalar(
+        text("SELECT COUNT(*) FROM boletin WHERE id_periodo_boletin = :id_p"),
+        {"id_p": id_periodo},
+    )
+    return count or 0
+
+
+async def boletin_cu24(sesion: AsyncSession, ci_estudiante: str, id_periodo: int):
+    """Obtiene el boletín completo de un estudiante en un periodo."""
+    return (
+        await sesion.execute(
+            text("""
+            SELECT b.id_boletin, b.fecha_emision_b, b.promedio_general_b, b.observaciones_generales_boletin,
+                   p.ci, p.nombre_persona, p.apellidos,
+                   pe.nombre_periodo, pe.id_gestion_periodo,
+                   g.anio,
+                   i.id_curso_inscripcion, vc.nombre_curso,
+                   array_agg(
+                       json_build_object(
+                           'id_materia', nf.id_materia,
+                           'materia', m.nombre_materia,
+                           'nota_final', nf.nota_final,
+                           'dimensiones_registradas', nf.dimensiones_registradas,
+                           'dimensiones_totales', nf.dimensiones_totales
+                       ) ORDER BY m.nombre_materia
+                   ) AS notas_por_materia
+              FROM boletin b
+              JOIN persona p ON p.ci = b.ci_estudiante_boletin
+              JOIN periodo pe ON pe.id_periodo = b.id_periodo_boletin
+              JOIN gestion g ON g.id_gestion = pe.id_gestion_periodo
+              LEFT JOIN inscripcion i ON i.ci_estudiante_inscripcion = b.ci_estudiante_boletin
+                                     AND i.id_gestion_inscripcion = pe.id_gestion_periodo
+              LEFT JOIN v_curso vc ON vc.id_curso = i.id_curso_inscripcion
+              LEFT JOIN v_nota_final nf ON nf.ci_estudiante = b.ci_estudiante_boletin
+                                       AND nf.id_periodo = b.id_periodo_boletin
+              LEFT JOIN materia m ON m.id_materia = nf.id_materia
+             WHERE b.ci_estudiante_boletin = :ci AND b.id_periodo_boletin = :id_p
+             GROUP BY b.id_boletin, p.ci, p.nombre_persona, p.apellidos,
+                      pe.nombre_periodo, pe.id_gestion_periodo, g.anio,
+                      i.id_curso_inscripcion, vc.nombre_curso
+            """),
+            {"ci": ci_estudiante, "id_p": id_periodo},
+        )
+    ).one_or_none()
+
+
+async def es_mi_estudiante_cu24(sesion: AsyncSession, ci_tutor: str, ci_estudiante: str) -> bool:
+    """Verifica si el estudiante está a cargo del tutor."""
+    result = await sesion.scalar(
+        text("""SELECT EXISTS (
+                 SELECT 1 FROM tutor_estudiante
+                  WHERE ci_tutor_tutorestudiante = :tutor
+                    AND ci_estudiante_tutorestudiante = :estudiante
+                )"""),
+        {"tutor": ci_tutor, "estudiante": ci_estudiante},
+    )
+    return bool(result)
+
+
+async def periodos_cu24(sesion: AsyncSession):
+    """Retorna períodos de la gestión vigente/actual."""
+    return (
+        await sesion.execute(
+            text("""
+            SELECT id_periodo, nombre_periodo
+              FROM periodo
+             WHERE id_gestion_periodo = (
+                   SELECT id_gestion FROM gestion WHERE estado_gestion = 'abierta' ORDER BY anio DESC LIMIT 1
+                 )
+             ORDER BY id_periodo
+            """),
+        )
+    ).all()
+
+
+async def cursos_cu24(sesion: AsyncSession):
+    """Retorna todos los cursos con su información."""
+    return (
+        await sesion.execute(
+            text("""
+            SELECT id_curso, nombre_curso
+              FROM v_curso
+             ORDER BY id_curso
+            """),
+        )
+    ).all()
+
+
+async def centralizador_cu24(sesion: AsyncSession, id_curso: int, id_periodo: int):
+    """Retorna las notas por estudiante y materia para el centralizador."""
+    return (
+        await sesion.execute(
+            text("""
+            SELECT p.ci, p.nombre_persona, p.apellidos,
+                   array_agg(
+                       json_build_object(
+                           'id_materia', nf.id_materia,
+                           'materia', m.nombre_materia,
+                           'nota_final', nf.nota_final,
+                           'dimensiones_registradas', nf.dimensiones_registradas,
+                           'dimensiones_totales', nf.dimensiones_totales
+                       ) ORDER BY m.nombre_materia
+                   ) FILTER (WHERE nf.id_materia IS NOT NULL) AS notas,
+                   round(avg(nf.nota_final), 2) AS promedio_estudiante
+              FROM inscripcion i
+              JOIN persona p ON p.ci = i.ci_estudiante_inscripcion
+              LEFT JOIN v_nota_final nf ON nf.ci_estudiante = i.ci_estudiante_inscripcion
+                                       AND nf.id_periodo = :id_p
+              LEFT JOIN materia m ON m.id_materia = nf.id_materia
+             WHERE i.id_curso_inscripcion = :id_c
+               AND i.id_gestion_inscripcion = (SELECT id_gestion_periodo FROM periodo WHERE id_periodo = :id_p)
+               AND i.estado_inscripcion = 'activa'
+             GROUP BY p.ci, p.nombre_persona, p.apellidos
+             ORDER BY p.apellidos, p.nombre_persona
+            """),
+            {"id_c": id_curso, "id_p": id_periodo},
+        )
+    ).all()

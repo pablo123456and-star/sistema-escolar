@@ -65,3 +65,45 @@ async def estudiantes_historial(usuario: Usuario, sesion: Sesion):
 async def historial_asistencia(usuario: Usuario, sesion: Sesion, ci_estudiante: str, id_gestion: int | None = None,
                                desde: date | None = None, hasta: date | None = None, id_materia: int | None = None):
     return await cu22.historial(sesion, usuario, ci_estudiante.strip(), id_gestion, desde, hasta, id_materia)
+
+
+# ============================================================
+# CU24 - GENERAR Y CONSULTAR BOLETÍN/LIBRETA
+# ============================================================
+
+from app.paquetes.evaluacion.casos_uso import cu24_generar_consultar_boletin as cu24
+from app.paquetes.evaluacion.schemas import BoletinSalida, CentralizadorSalida, EmitirBoletinesSalida, PeriodoOpcionCU24, CursoOpcionCU24
+
+Administrador = Annotated[UsuarioActual, Depends(requiere_rol("administrador"))]
+AdminTutorEstudiante = Annotated[UsuarioActual, Depends(requiere_rol("administrador", "tutor", "estudiante"))]
+
+
+@router.post("/boletines/emitir", response_model=EmitirBoletinesSalida,
+             summary="CU24 - Emitir boletines de un periodo (solo administrador)")
+async def emitir_boletines(usuario: Administrador, sesion: Sesion,
+                          id_periodo: int, id_curso: int | None = None):
+    return await cu24.emitir_boletines(sesion, usuario, id_periodo, id_curso)
+
+
+@router.get("/boletines/{ci_estudiante}", response_model=BoletinSalida,
+            summary="CU24 - Consultar boletín de un estudiante")
+async def consultar_boletin(usuario: Usuario, sesion: Sesion, ci_estudiante: str, id_periodo: int):
+    return await cu24.consultar_boletin(sesion, usuario, ci_estudiante, id_periodo)
+
+
+@router.get("/centralizador", response_model=CentralizadorSalida,
+            summary="CU24 - Centralizador académico de un curso")
+async def centralizador(usuario: Administrador, sesion: Sesion, id_curso: int, id_periodo: int):
+    return await cu24.centralizador(sesion, usuario, id_curso, id_periodo)
+
+
+@router.get("/boletines/opciones/periodos", response_model=list[PeriodoOpcionCU24],
+            summary="CU24 - Períodos de la gestión actual para los formularios")
+async def opciones_periodos(usuario: AdminTutorEstudiante, sesion: Sesion):
+    return await cu24.periodos(sesion)
+
+
+@router.get("/boletines/opciones/cursos", response_model=list[CursoOpcionCU24],
+            summary="CU24 - Cursos disponibles para los formularios")
+async def opciones_cursos(usuario: AdminTutorEstudiante, sesion: Sesion):
+    return await cu24.cursos(sesion)

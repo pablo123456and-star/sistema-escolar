@@ -83,6 +83,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/evaluacion/asistencia', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['administrador'] },
   // CU22 - Consultar historial de asistencia
   { ruta: '/evaluacion/historial-asistencia', texto: 'Historial de asistencia', icono: CalendarCheckIcon, roles: ['administrador'] },
+  // CU24 - Generar y consultar boletín/libreta
+  { ruta: '/evaluacion/boletines', texto: 'Boletines', icono: FileTextIcon, roles: ['administrador'] },
   // Docente
   { ruta: '/horarios/consulta', texto: 'Mis horarios', icono: CalendarDaysIcon, roles: ['profesor'] },
   { ruta: '/evaluacion/asistencia', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['profesor'] },
@@ -93,13 +95,13 @@ const MENU: ItemMenu[] = [
   // Estudiante
   { ruta: '/horarios/consulta', texto: 'Mi horario', icono: CalendarDaysIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/cu23', texto: 'Mis calificaciones', icono: NotebookPenIcon, roles: ['estudiante'] },
-  { ruta: '/evaluacion/cu24', texto: 'Boletín', icono: FileTextIcon, roles: ['estudiante'] },
+  { ruta: '/evaluacion/boletines', texto: 'Boletín', icono: FileTextIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/historial-asistencia', texto: 'Mi asistencia', icono: CalendarCheckIcon, roles: ['estudiante'] },
   { ruta: '/academico/cu17', texto: 'Mis inscripciones', icono: HistoryIcon, roles: ['estudiante'] },
   // Padre/Tutor
   { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: UsersRoundIcon, roles: ['tutor'] },
   { ruta: '/horarios/consulta', texto: 'Horarios', icono: CalendarDaysIcon, roles: ['tutor'] },
-  { ruta: '/evaluacion/cu24', texto: 'Boletín', icono: FileTextIcon, roles: ['tutor'] },
+  { ruta: '/evaluacion/boletines', texto: 'Boletín', icono: FileTextIcon, roles: ['tutor'] },
   { ruta: '/evaluacion/historial-asistencia', texto: 'Asistencia', icono: CalendarCheckIcon, roles: ['tutor'] },
   { ruta: '/academico/cu17', texto: 'Inscripciones', icono: HistoryIcon, roles: ['tutor'] },
   // Comunes a varios roles
