@@ -147,3 +147,76 @@ class HistorialAsistenciaSalida(BaseModel):
     general: ConteoAsistenciaSalida
     materias: list[MateriaHistorialSalida]
     detalle: list[RegistroHistorialSalida]
+
+
+# ============================================================
+# CU24 - GENERAR Y CONSULTAR BOLETÍN/LIBRETA
+# ============================================================
+
+
+class NotaMateriaSalida(BaseModel):
+    """Nota de una materia (de v_nota_final)."""
+
+    id_materia: int
+    materia: str
+    nota_final: float
+    dimensiones_registradas: int
+    dimensiones_totales: int
+
+
+class BoletinSalida(BaseModel):
+    """Boletín completo de un estudiante en un periodo."""
+
+    id_boletin: int
+    fecha_emision_b: date
+    promedio_general_b: float
+    observaciones_generales_boletin: str | None
+    ci: str
+    nombre_persona: str
+    apellidos: str
+    nombre_periodo: str
+    id_gestion_periodo: int
+    anio: int
+    id_curso_inscripcion: int | None
+    nombre_curso: str | None
+    notas_por_materia: list[NotaMateriaSalida]
+
+
+class EmitirBoletinesSalida(BaseModel):
+    """Resultado de emitir boletines."""
+
+    cantidad: int
+    periodo: str
+    fecha_emision: date
+
+
+class CentralizadorFilaSalida(BaseModel):
+    """Una fila del centralizador: un estudiante con sus notas por materia."""
+
+    ci: str
+    nombre_persona: str
+    apellidos: str
+    notas: list[NotaMateriaSalida]
+    promedio_estudiante: float | None
+
+
+class CentralizadorSalida(BaseModel):
+    """Centralizador académico: notas de un curso en un periodo."""
+
+    curso: str
+    periodo: str
+    filas: list[CentralizadorFilaSalida]
+
+
+class PeriodoOpcionCU24(BaseModel):
+    """Opción de período para las listas desplegables del CU24."""
+
+    id_periodo: int
+    nombre_periodo: str
+
+
+class CursoOpcionCU24(BaseModel):
+    """Opción de curso para las listas desplegables del CU24."""
+
+    id_curso: int
+    nombre_curso: str

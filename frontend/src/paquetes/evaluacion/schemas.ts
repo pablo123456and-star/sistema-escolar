@@ -97,3 +97,62 @@ export type HistorialAsistencia = {
 }
 
 export type FiltrosHistorial = { id_gestion?: number; desde?: string; hasta?: string }
+
+
+// ============================================================
+// CU24 - GENERAR Y CONSULTAR BOLETÍN/LIBRETA
+// ============================================================
+
+export type PeriodoOpcionCU24 = {
+  id_periodo: number
+  nombre_periodo: string
+}
+
+export type CursoOpcionCU24 = {
+  id_curso: number
+  nombre_curso: string
+}
+
+export type NotaMateria = {
+  id_materia: number
+  materia: string
+  nota_final: number
+  dimensiones_registradas: number
+  dimensiones_totales: number
+}
+
+export type Boletin = {
+  id_boletin: number
+  fecha_emision_b: string
+  promedio_general_b: number
+  observaciones_generales_boletin: string | null
+  ci: string
+  nombre_persona: string
+  apellidos: string
+  nombre_periodo: string
+  id_gestion_periodo: number
+  anio: number
+  id_curso_inscripcion: number | null
+  nombre_curso: string | null
+  notas_por_materia: NotaMateria[]
+}
+
+export type EmitirBoletines = {
+  cantidad: number
+  periodo: string
+  fecha_emision: string
+}
+
+export type FilaCentralizador = {
+  ci: string
+  nombre_persona: string
+  apellidos: string
+  notas: NotaMateria[]
+  promedio_estudiante: number | null
+}
+
+export type Centralizador = {
+  curso: string
+  periodo: string
+  filas: FilaCentralizador[]
+}

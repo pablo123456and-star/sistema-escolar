@@ -81,7 +81,7 @@ export default function PanelEstudiante() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <Tarjeta titulo="Mis calificaciones" icono={NotebookPenIcon} enlace={{ texto: 'Ver boletín', ruta: '/evaluacion/cu24' }}>
+        <Tarjeta titulo="Mis calificaciones" icono={NotebookPenIcon} enlace={{ texto: 'Ver boletín', ruta: '/evaluacion/boletines' }}>
           <Pendiente texto="Tus calificaciones aparecerán aquí cuando se implemente el registro de notas (CU23)." />
         </Tarjeta>
         <Tarjeta titulo="Próximas clases" icono={CalendarClockIcon}>
@@ -91,7 +91,7 @@ export default function PanelEstudiante() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AccesoRapido icono={ClipboardCheckIcon} titulo="Autoevaluación" descripcion={`Completar la del ${PERIODO_ACTUAL}`} ruta="/evaluacion/cu23" />
-        <AccesoRapido icono={FileTextIcon} titulo="Boletín / libreta" descripcion="Notas de trimestres cerrados" ruta="/evaluacion/cu24" />
+        <AccesoRapido icono={FileTextIcon} titulo="Boletín / libreta" descripcion="Notas de trimestres cerrados" ruta="/evaluacion/boletines" />
         <AccesoRapido icono={HistoryIcon} titulo="Mis inscripciones" descripcion="Historial por gestión" ruta="/academico/cu17" />
         <AccesoRapido icono={WalletIcon} titulo="Mis pagos" descripcion="Cuotas y comprobantes" ruta="/administracion/pagos" />
       </div>
