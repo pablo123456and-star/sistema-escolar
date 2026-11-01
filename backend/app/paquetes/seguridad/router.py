@@ -8,7 +8,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, Request, status
 
-from app.nucleo.dependencias import Administrador, Sesion, Usuario
+from app.nucleo.dependencias import Administrador, Sesion, Usuario, ip_cliente
 from app.nucleo.esquemas import Mensaje, NumeroPagina, Pagina, TamanoPagina
 from app.paquetes.seguridad.casos_uso import (
     cu01_iniciar_sesion as cu01,
@@ -29,8 +29,8 @@ router = APIRouter(prefix="/seguridad", tags=["seguridad"])
 # ---- CU01: iniciar sesión, bloqueos y recuperación de contraseña ------------
 @router.post("/sesion", response_model=SesionSalida, summary="CU01 - Iniciar sesión")
 async def iniciar_sesion(datos: IniciarSesionEntrada, sesion: Sesion, request: Request):
-    ip_cliente = request.client.host if request.client else None
-    return await cu01.iniciar_sesion(sesion, datos, ip_cliente)
+    ip = ip_cliente(request)   # IP real del usuario (detrás de un proxy viene en X-Forwarded-For)
+    return await cu01.iniciar_sesion(sesion, datos, ip)
 
 
 @router.get("/perfil", response_model=PerfilSalida, summary="CU01 - Datos del usuario conectado")
@@ -46,8 +46,8 @@ async def cambiar_contrasena(datos: CambiarContrasenaEntrada, usuario: Usuario, 
 
 @router.post("/recuperar-contrasena", response_model=Mensaje, summary="CU01 - Solicitar recuperación por correo")
 async def recuperar_contrasena(datos: RecuperarContrasenaEntrada, sesion: Sesion, request: Request):
-    ip_cliente = request.client.host if request.client else None
-    return Mensaje(mensaje=await cu01.solicitar_recuperacion(sesion, datos.dato, ip_cliente))
+    ip = ip_cliente(request)   # IP real del usuario (detrás de un proxy viene en X-Forwarded-For)
+    return Mensaje(mensaje=await cu01.solicitar_recuperacion(sesion, datos.dato, ip))
 
 
 @router.get("/recuperar-contrasena/validar", response_model=ValidarTokenSalida, summary="CU01 - Validar token de recuperación")
@@ -57,8 +57,8 @@ async def validar_token(token: str, sesion: Sesion):
 
 @router.post("/restablecer-contrasena", response_model=Mensaje, summary="CU01 - Restablecer contraseña con token")
 async def restablecer_contrasena(datos: RestablecerContrasenaEntrada, sesion: Sesion, request: Request):
-    ip_cliente = request.client.host if request.client else None
-    mensaje = await cu01.restablecer_contrasena_con_token(sesion, datos, ip_cliente)
+    ip = ip_cliente(request)   # IP real del usuario (detrás de un proxy viene en X-Forwarded-For)
+    mensaje = await cu01.restablecer_contrasena_con_token(sesion, datos, ip)
     return Mensaje(mensaje=mensaje)
 
 

@@ -203,6 +203,25 @@ async def test_cu01_solicitud_atendida_con_el_enlace_del_correo(cliente, admin):
     assert pendientes == []
 
 
+async def test_cu01_registra_la_ip_real_detras_de_un_proxy(cliente):
+    """En producción las peticiones llegan por un proxy: la IP del usuario viene en X-Forwarded-For."""
+    from sqlalchemy import text
+    from app.nucleo import bd
+    proxy = {"X-Forwarded-For": "203.0.113.7, 10.0.0.1"}   # usuario, proxy
+    r = await cliente.post("/seguridad/recuperar-contrasena", json={"correo": "rflores"}, headers=proxy)
+    assert r.status_code == 200
+    async with bd._fabrica() as s:
+        ip_token = await s.scalar(select(TokenRecuperacion.ip_solicitud).order_by(TokenRecuperacion.id_recuperacion.desc()).limit(1))
+        ip_bitacora = await s.scalar(text("SELECT host(ip) FROM bitacora ORDER BY id_bitacora DESC LIMIT 1"))
+    assert ip_token == "203.0.113.7" and ip_bitacora == "203.0.113.7"
+
+    r = await cliente.post("/seguridad/sesion", json={"identificador": "rflores", "contrasena": "Escuela2026"},
+                           headers={"X-Forwarded-For": "198.51.100.23"})
+    assert r.status_code == 200
+    async with bd._fabrica() as s:
+        assert await s.scalar(text("SELECT host(ip) FROM bitacora ORDER BY id_bitacora DESC LIMIT 1")) == "198.51.100.23"
+
+
 async def test_cu01_panel_inicio(cliente, admin, profesor):
     r = (await cliente.get("/seguridad/inicio", headers=admin)).json()
     assert r["estudiantes_activos"] == 12 and r["actividades"]
