@@ -169,6 +169,8 @@ export type MateriaColumnaCU24 = {
 export type Centralizador = {
   curso: string
   periodo: string
+  anio: number
+  nota_minima: number
   /** Columnas: todas las materias del curso (cada fila trae solo las notas que existen). */
   materias: MateriaColumnaCU24[]
   filas: FilaCentralizador[]

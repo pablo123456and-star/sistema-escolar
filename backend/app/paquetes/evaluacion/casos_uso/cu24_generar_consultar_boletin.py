@@ -133,6 +133,8 @@ async def centralizador(sesion: AsyncSession, usuario: UsuarioActual, id_curso: 
     return CentralizadorSalida(
         curso=curso.nombre_curso,
         periodo=periodo.nombre_periodo,
+        anio=periodo.anio,
+        nota_minima=float(periodo.nota_minima_aprobacion),
         materias=[MateriaColumnaCU24(id_materia=m.id_materia, materia=m.materia) for m in materias],
         filas=filas,
     )

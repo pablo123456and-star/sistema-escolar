@@ -23,6 +23,7 @@ import { Loader2, PrinterIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Campo } from '@/componentes/comunes'
 import { Button } from '@/componentes/ui/button'
+import { Input } from '@/componentes/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/componentes/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/componentes/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/componentes/ui/select'
@@ -322,7 +323,7 @@ function ConsultarBoletin({ rol, periodos, cursos }: { rol: Rol; periodos: Perio
 function VistaBoletin({ boletin }: { boletin: Boletin }) {
   return (
     <div className="space-y-4">
-      <div className="space-y-4 rounded border border-gray-200 bg-white p-6">
+      <div className="space-y-4 rounded border border-gray-200 bg-white p-4 sm:p-6">
         <div className="flex flex-wrap justify-between gap-2">
           <div>
             <p className="font-bold">
@@ -331,7 +332,7 @@ function VistaBoletin({ boletin }: { boletin: Boletin }) {
             <p className="text-sm text-gray-600">CI: {boletin.ci}</p>
             <p className="text-sm text-gray-600">Gestión: {boletin.anio}</p>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <p className="font-bold">{boletin.nombre_periodo}</p>
             <p className="text-sm text-gray-600">Emitido: {fecha(boletin.fecha_emision_b)}</p>
           </div>
@@ -346,15 +347,15 @@ function VistaBoletin({ boletin }: { boletin: Boletin }) {
               <TableRow>
                 <TableHead>Materia</TableHead>
                 <TableHead className="text-right">Nota final</TableHead>
-                <TableHead className="text-center">Dimensiones</TableHead>
+                <TableHead className="hidden text-center sm:table-cell">Dimensiones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {boletin.notas_por_materia.map((nota) => (
                 <TableRow key={nota.id_materia}>
-                  <TableCell>{nota.materia}</TableCell>
+                  <TableCell className="whitespace-normal">{nota.materia}</TableCell>
                   <TableCell className="text-right font-semibold">{nota.nota_final.toFixed(2)}</TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="hidden text-center sm:table-cell">
                     {nota.dimensiones_registradas} / {nota.dimensiones_totales}
                   </TableCell>
                 </TableRow>
@@ -391,12 +392,12 @@ function VerCentralizador({ periodos, cursos }: { periodos: PeriodoOpcionCU24[];
   const centralizador = useCentralizador(idCurso, idPeriodo)
 
   return (
-    <Card>
+    <Card className="print:overflow-visible print:py-0 print:ring-0">
       <CardHeader className="print:hidden">
         <CardTitle>Centralizador académico</CardTitle>
         <CardDescription>Notas finales de un curso en un periodo, por materia.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 print:px-0">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 print:hidden">
           <Campo etiqueta="Curso">
             <SelectorCurso cursos={cursos} valor={idCurso} onCambiar={setIdCurso} />
@@ -408,68 +409,212 @@ function VerCentralizador({ periodos, cursos }: { periodos: PeriodoOpcionCU24[];
 
         {centralizador.isLoading && <p className="text-slate-500">Cargando centralizador...</p>}
         {centralizador.isError && <p className="text-amber-700">{mensajeError(centralizador.error)}</p>}
-        {centralizador.data && <TablaCentralizador datos={centralizador.data} />}
+        {centralizador.data && (
+          <TablaCentralizador key={`${idCurso}-${idPeriodo}`} datos={centralizador.data} />
+        )}
       </CardContent>
     </Card>
   )
 }
 
+/** Texto sin tildes y en minúsculas, para buscar "Quispe" o "quispe" o "Pérez" con "perez". */
+const normalizar = (t: string) =>
+  t
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+
+type FilaCentralizador = Centralizador['filas'][number]
+
+// Hoja horizontal solo mientras se ve el centralizador (el boletín sigue imprimiéndose vertical)
+const ESTILO_IMPRESION = '@media print { @page { size: landscape; margin: 8mm; } }'
+
 function TablaCentralizador({ datos }: { datos: Centralizador }) {
+  const [busqueda, setBusqueda] = useState('')
+  // Marcas fijas (clic) y resaltado temporal (mouse encima)
+  const [filaFija, setFilaFija] = useState<string | null>(null)
+  const [colFija, setColFija] = useState<number | null>(null)
+  const [filaEncima, setFilaEncima] = useState<string | null>(null)
+  const [colEncima, setColEncima] = useState<number | null>(null)
+
   // Cada fila trae solo las notas que existen: se ubican por id_materia en las columnas del backend
-  const notaDe = (fila: Centralizador['filas'][number], idMateria: number) =>
+  const notaDe = (fila: FilaCentralizador, idMateria: number) =>
     fila.notas.find((n) => n.id_materia === idMateria)?.nota_final ?? null
   const promedioMateria = (idMateria: number) =>
     promedio(datos.filas.map((f) => notaDe(f, idMateria)).filter((v): v is number => v !== null))
   const promedioCurso = promedio(datos.filas.map((f) => f.promedio_estudiante).filter((v): v is number => v !== null))
   const formato = (v: number | null) => (v === null ? '—' : v.toFixed(2))
+  const reprobada = (v: number | null) => v !== null && v < datos.nota_minima
+
+  const texto = normalizar(busqueda.trim())
+  const filas = texto
+    ? datos.filas.filter((f) => normalizar(`${f.apellidos} ${f.nombre_persona} ${f.ci}`).includes(texto))
+    : datos.filas
+
+  const filaMarcada = (ci: string) => ci === filaFija || ci === filaEncima
+  const colMarcada = (id: number) => id === colFija || id === colEncima
+  const alternar = <T,>(actual: T | null, valor: T) => (actual === valor ? null : valor)
+
+  /** Fondo de una celda de nota: cruce de fila y columna marcadas más fuerte que solo una de ellas. */
+  const fondo = (ci: string, idMateria: number | null) => {
+    const f = filaMarcada(ci)
+    const c = idMateria !== null && colMarcada(idMateria)
+    if (f && c) return 'bg-amber-200'
+    if (f || c) return 'bg-amber-50'
+    return ''
+  }
+
+  // Celdas fijas (nombre a la izquierda, promedio a la derecha): fondo opaco para tapar lo que pasa por debajo
+  // En celular el nombre baja de línea y el Promedio no queda fijo, para que se vean las notas
+  const celdaIzquierda =
+    'sticky left-0 z-10 min-w-32 border-r border-b px-2 py-2 text-left sm:min-w-0 sm:px-3 sm:whitespace-nowrap print:static print:whitespace-nowrap'
+  const celdaDerecha = 'z-10 border-b border-l px-3 py-2 text-center sm:sticky sm:right-0 print:static'
+  const celdaNota = 'border-r border-b px-2 py-2 text-center tabular-nums print:px-1 print:py-0.5'
 
   return (
-    <div className="space-y-4">
-      <p className="hidden font-semibold print:block">
-        Centralizador · {datos.curso} · {datos.periodo}
-      </p>
-      <div className="overflow-x-auto rounded border">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100">
+    <div className="space-y-3">
+      <style>{ESTILO_IMPRESION}</style>
+
+      {/* Encabezado que solo sale al imprimir */}
+      <div className="hidden print:block">
+        <p className="text-xs">Unidad Educativa “Mariscal Sucre G”</p>
+        <p className="text-sm font-bold">
+          Centralizador · {datos.curso} · {datos.periodo} · Gestión {datos.anio}
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
+        <Input
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar estudiante por nombre o CI"
+          className="sm:max-w-xs"
+          aria-label="Buscar estudiante"
+        />
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+          <span>
+            Clic en un nombre, una materia o una nota para marcarla. En <span className="font-semibold text-red-600">rojo</span>:
+            menor a {datos.nota_minima}.
+          </span>
+          {(filaFija !== null || colFija !== null) && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setFilaFija(null)
+                setColFija(null)
+              }}
+            >
+              Quitar marcas
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div
+        className="max-h-[65vh] overflow-auto rounded border print:max-h-none print:overflow-visible print:rounded-none print:border-0"
+        onMouseLeave={() => {
+          setFilaEncima(null)
+          setColEncima(null)
+        }}
+      >
+        <table className="w-full border-separate border-spacing-0 text-sm print:text-[8.5px]">
+          <thead>
             <tr>
-              <th className="border-r border-b p-2 text-left font-semibold">Estudiante</th>
+              <th className={`${celdaIzquierda} top-0 z-30 bg-gray-100 font-semibold`}>Estudiante</th>
               {datos.materias.map((m) => (
-                <th key={m.id_materia} className="max-w-xs border-r border-b p-2 text-center text-xs font-semibold whitespace-normal">
+                <th
+                  key={m.id_materia}
+                  onClick={() => setColFija((c) => alternar(c, m.id_materia))}
+                  onMouseEnter={() => {
+                    setColEncima(m.id_materia)
+                    setFilaEncima(null)
+                  }}
+                  className={`sticky top-0 z-20 max-w-28 min-w-20 cursor-pointer border-r border-b p-2 text-center text-xs font-semibold whitespace-normal select-none print:static print:min-w-0 print:p-1 print:text-[8px] ${
+                    colMarcada(m.id_materia) ? 'bg-amber-200' : 'bg-gray-100'
+                  }`}
+                >
                   {m.materia}
                 </th>
               ))}
-              <th className="border-b bg-blue-50 p-2 text-center font-semibold">Promedio</th>
+              <th className={`${celdaDerecha} sticky top-0 z-30 bg-blue-100 font-semibold`}>Promedio</th>
             </tr>
           </thead>
           <tbody>
-            {datos.filas.map((fila, i) => (
-              <tr key={fila.ci} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="border-r border-b p-2">
+            {filas.map((fila) => (
+              <tr key={fila.ci} className="break-inside-avoid">
+                <td
+                  onClick={() => setFilaFija((f) => alternar(f, fila.ci))}
+                  onMouseEnter={() => {
+                    setFilaEncima(fila.ci)
+                    setColEncima(null)
+                  }}
+                  className={`${celdaIzquierda} cursor-pointer select-none print:px-1 print:py-0.5 ${
+                    filaMarcada(fila.ci) ? 'bg-amber-200 font-semibold' : 'bg-white'
+                  }`}
+                >
                   {fila.apellidos} {fila.nombre_persona}
                 </td>
-                {datos.materias.map((m) => (
-                  <td key={m.id_materia} className="border-r border-b p-2 text-center font-semibold">
-                    {formato(notaDe(fila, m.id_materia))}
-                  </td>
-                ))}
-                <td className="border-b bg-blue-50 p-2 text-center font-bold">{formato(fila.promedio_estudiante)}</td>
+                {datos.materias.map((m) => {
+                  const nota = notaDe(fila, m.id_materia)
+                  return (
+                    <td
+                      key={m.id_materia}
+                      onClick={() => {
+                        setFilaFija((f) => alternar(f, fila.ci))
+                        setColFija((c) => alternar(c, m.id_materia))
+                      }}
+                      onMouseEnter={() => {
+                        setFilaEncima(fila.ci)
+                        setColEncima(m.id_materia)
+                      }}
+                      className={`${celdaNota} cursor-pointer ${fondo(fila.ci, m.id_materia)} ${
+                        reprobada(nota) ? 'font-semibold text-red-600' : ''
+                      }`}
+                    >
+                      {formato(nota)}
+                    </td>
+                  )
+                })}
+                <td
+                  className={`${celdaDerecha} font-bold print:px-1 print:py-0.5 ${
+                    filaMarcada(fila.ci) ? 'bg-amber-200' : 'bg-blue-50'
+                  } ${reprobada(fila.promedio_estudiante) ? 'text-red-600' : ''}`}
+                >
+                  {formato(fila.promedio_estudiante)}
+                </td>
               </tr>
             ))}
-            <tr className="bg-blue-100 font-bold">
-              <td className="border-r border-b p-2">Promedio por materia</td>
+            {filas.length === 0 && (
+              <tr>
+                <td colSpan={datos.materias.length + 2} className="p-6 text-center text-slate-500">
+                  Ningún estudiante coincide con “{busqueda}”.
+                </td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="font-bold">
+              <td className={`${celdaIzquierda} bg-blue-100 print:px-1 print:py-0.5`}>Promedio por materia</td>
               {datos.materias.map((m) => (
-                <td key={m.id_materia} className="border-r border-b p-2 text-center">
+                <td key={m.id_materia} className={`${celdaNota} ${colMarcada(m.id_materia) ? 'bg-amber-200' : 'bg-blue-100'}`}>
                   {formato(promedioMateria(m.id_materia))}
                 </td>
               ))}
-              <td className="border-b p-2 text-center">{formato(promedioCurso)}</td>
+              <td className={`${celdaDerecha} bg-blue-100 print:px-1 print:py-0.5`}>{formato(promedioCurso)}</td>
             </tr>
-          </tbody>
+          </tfoot>
         </table>
       </div>
-      <Button onClick={() => window.print()} variant="outline" className="print:hidden">
-        <PrinterIcon className="mr-2 size-4" /> Imprimir centralizador
-      </Button>
+
+      <div className="flex flex-wrap items-center gap-3 print:hidden">
+        <Button onClick={() => window.print()} variant="outline">
+          <PrinterIcon className="mr-2 size-4" /> Imprimir centralizador
+        </Button>
+        <span className="text-xs text-slate-500">
+          Se imprime en hoja horizontal{texto ? ', solo con los estudiantes que coinciden con la búsqueda' : ''}.
+        </span>
+      </div>
     </div>
   )
 }

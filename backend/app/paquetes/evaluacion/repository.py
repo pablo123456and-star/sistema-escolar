@@ -208,10 +208,12 @@ async def historial_cu22(sesion: AsyncSession, ci_estudiante: str, id_gestion: i
 
 
 async def periodo_cu24(sesion: AsyncSession, id_periodo: int):
-    """Obtiene el periodo (trimestre) por id."""
+    """Obtiene el periodo (trimestre) por id, con el año y la nota mínima de aprobación de su gestión."""
     return (
         await sesion.execute(
-            text("""SELECT id_periodo, nombre_periodo, estado_periodo FROM periodo WHERE id_periodo = :id"""),
+            text("""SELECT pe.id_periodo, pe.nombre_periodo, pe.estado_periodo, g.anio, g.nota_minima_aprobacion
+                      FROM periodo pe JOIN gestion g ON g.id_gestion = pe.id_gestion_periodo
+                     WHERE pe.id_periodo = :id"""),
             {"id": id_periodo},
         )
     ).one_or_none()

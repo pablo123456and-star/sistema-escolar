@@ -221,6 +221,7 @@ async def test_cu24_centralizador_columnas_son_las_materias_del_curso(cliente, a
     assert columnas
     con_nota = {n["id_materia"] for fila in data["filas"] for n in fila["notas"]}
     assert con_nota <= columnas
+    assert data["anio"] == 2026 and data["nota_minima"] == 51
 
 
 async def test_cu24_periodos_incluyen_gestiones_anteriores(cliente, admin):

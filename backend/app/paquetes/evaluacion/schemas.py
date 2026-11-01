@@ -216,6 +216,8 @@ class CentralizadorSalida(BaseModel):
 
     curso: str
     periodo: str
+    anio: int
+    nota_minima: float
     materias: list[MateriaColumnaCU24]
     filas: list[CentralizadorFilaSalida]
 
