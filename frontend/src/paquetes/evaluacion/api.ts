@@ -65,6 +65,81 @@ export function useHistorialAsistencia(ci: string | null, filtros: FiltrosHistor
 
 
 // ============================================================
+// CU23 - REGISTRAR CALIFICACIONES Y EVALUACIONES
+// ============================================================
+
+import type {
+  CambioPeriodo,
+  ClasesCalificacion,
+  DatosAutoevaluacion,
+  DatosPlanilla,
+  MisCalificaciones,
+  PlanillaCU23,
+} from './schemas'
+
+export function useClasesCalificacion() {
+  return useQuery({
+    queryKey: ['evaluacion', 'calificaciones', 'clases'],
+    queryFn: () => api<ClasesCalificacion>('/evaluacion/calificaciones/clases'),
+  })
+}
+
+export function usePlanilla(id_asignacion: number | null, id_periodo: number | null) {
+  return useQuery({
+    queryKey: ['evaluacion', 'calificaciones', 'planilla', id_asignacion, id_periodo],
+    queryFn: () => api<PlanillaCU23>(`/evaluacion/calificaciones/planilla/${id_asignacion}`, { params: { id_periodo } }),
+    enabled: id_asignacion !== null && id_periodo !== null,
+  })
+}
+
+export function useGuardarPlanilla(id_asignacion: number) {
+  const cliente = useQueryClient()
+  return useMutation({
+    mutationFn: (datos: DatosPlanilla) =>
+      api<PlanillaCU23>(`/evaluacion/calificaciones/planilla/${id_asignacion}`, { metodo: 'PUT', cuerpo: datos }),
+    onSuccess: (planilla) => {
+      cliente.setQueryData(['evaluacion', 'calificaciones', 'planilla', id_asignacion, planilla.periodo.id_periodo], planilla)
+      return cliente.invalidateQueries({ queryKey: ['evaluacion', 'calificaciones', 'clases'] })
+    },
+  })
+}
+
+export function useMisCalificaciones(id_periodo: number | null) {
+  return useQuery({
+    queryKey: ['evaluacion', 'calificaciones', 'mias', id_periodo],
+    queryFn: () => api<MisCalificaciones>('/evaluacion/calificaciones/mias', { params: { id_periodo } }),
+  })
+}
+
+export function useGuardarAutoevaluacion() {
+  const cliente = useQueryClient()
+  return useMutation({
+    mutationFn: (datos: DatosAutoevaluacion) =>
+      api<MisCalificaciones>('/evaluacion/calificaciones/autoevaluacion', { metodo: 'PUT', cuerpo: datos }),
+    onSuccess: (datos) => {
+      cliente.setQueryData(['evaluacion', 'calificaciones', 'mias', datos.periodo?.id_periodo ?? null], datos)
+      return cliente.invalidateQueries({ queryKey: ['evaluacion', 'calificaciones', 'mias', null] })
+    },
+  })
+}
+
+export function useCambiarPeriodo() {
+  const cliente = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id_periodo, accion }: { id_periodo: number; accion: 'cerrar' | 'reabrir' }) =>
+      api<CambioPeriodo>(`/evaluacion/calificaciones/periodos/${id_periodo}/${accion}`, { metodo: 'POST' }),
+    onSuccess: () =>
+      Promise.all([
+        cliente.invalidateQueries({ queryKey: ['evaluacion', 'calificaciones'] }),
+        cliente.invalidateQueries({ queryKey: ['evaluacion', 'boletin'] }),
+        cliente.invalidateQueries({ queryKey: ['evaluacion', 'centralizador'] }),
+        cliente.invalidateQueries({ queryKey: ['evaluacion', 'boletines'] }),
+      ]),
+  })
+}
+
+
+// ============================================================
 // CU24 - GENERAR Y CONSULTAR BOLETÍN/LIBRETA
 // ============================================================
 

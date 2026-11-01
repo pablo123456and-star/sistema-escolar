@@ -100,6 +100,103 @@ export type FiltrosHistorial = { id_gestion?: number; desde?: string; hasta?: st
 
 
 // ============================================================
+// CU23 - REGISTRAR CALIFICACIONES Y EVALUACIONES
+// ============================================================
+
+export type DimensionCU23 = {
+  id_dimension: number
+  nombre_dimension: string
+  puntaje_maximo: number
+  es_autoevaluacion: boolean
+}
+
+export type PeriodoCU23 = {
+  id_periodo: number
+  nombre_periodo: string
+  estado_periodo: 'abierto' | 'cerrado'
+  fecha_inicio_p: string
+  fecha_final_p: string
+  /** false: el trimestre aún no empieza y no admite notas */
+  iniciado: boolean
+  /** (estudiante, materia) sin nota o con dimensiones vacías */
+  notas_pendientes: number
+}
+
+export type ClaseCU23 = {
+  id_asignacion: number
+  curso: string
+  materia: string
+  profesor: string
+}
+
+export type ClasesCalificacion = {
+  gestion: number | null
+  nota_minima: number | null
+  periodos: PeriodoCU23[]
+  dimensiones: DimensionCU23[]
+  clases: ClaseCU23[]
+}
+
+/** id_dimension -> puntaje (las claves llegan como texto en JSON) */
+export type Puntajes = Record<string, number>
+
+export type NotaEstudianteCU23 = {
+  ci: string
+  nombre_persona: string
+  apellidos: string
+  puntajes: Puntajes
+  nota_final: number | null
+  observacion: string | null
+}
+
+export type PlanillaCU23 = {
+  clase: ClaseCU23
+  periodo: PeriodoCU23
+  nota_minima: number
+  dimensiones: DimensionCU23[]
+  editable: boolean
+  motivo_no_editable: string | null
+  estudiantes: NotaEstudianteCU23[]
+}
+
+export type DatosPlanilla = {
+  id_periodo: number
+  notas: { ci_estudiante: string; puntajes: Record<string, number | null>; observacion?: string | null }[]
+}
+
+export type MateriaNotasCU23 = {
+  id_materia: number
+  materia: string
+  profesor: string
+  puntajes: Puntajes
+  nota_final: number | null
+  observacion: string | null
+}
+
+export type MisCalificaciones = {
+  gestion: number | null
+  curso: string | null
+  nota_minima: number | null
+  periodos: PeriodoCU23[]
+  periodo: PeriodoCU23 | null
+  dimensiones: DimensionCU23[]
+  autoevaluacion_editable: boolean
+  motivo_no_editable: string | null
+  materias: MateriaNotasCU23[]
+}
+
+export type DatosAutoevaluacion = {
+  id_periodo: number
+  autoevaluaciones: { id_materia: number; puntaje: number | null }[]
+}
+
+export type CambioPeriodo = {
+  periodo: string
+  estado_periodo: 'abierto' | 'cerrado'
+  boletines: number | null
+}
+
+// ============================================================
 // CU24 - GENERAR Y CONSULTAR BOLETÍN/LIBRETA
 // ============================================================
 

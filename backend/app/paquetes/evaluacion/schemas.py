@@ -150,6 +150,150 @@ class HistorialAsistenciaSalida(BaseModel):
 
 
 # ============================================================
+# CU23 - REGISTRAR CALIFICACIONES Y EVALUACIONES
+# ============================================================
+
+
+class DimensionSalida(BaseModel):
+    """Dimensión de evaluación de la gestión (Ser, Saber, Hacer, Decidir, Autoevaluación)."""
+
+    id_dimension: int
+    nombre_dimension: str
+    puntaje_maximo: float
+    es_autoevaluacion: bool
+
+
+class PeriodoCalificacionSalida(BaseModel):
+    """Trimestre de la gestión con su estado y cuántas notas faltan o están incompletas."""
+
+    id_periodo: int
+    nombre_periodo: str
+    estado_periodo: Literal["abierto", "cerrado"]
+    fecha_inicio_p: date
+    fecha_final_p: date
+    iniciado: bool             # False: aún no empieza, no se registran notas
+    notas_pendientes: int      # (estudiante, materia) sin nota o con dimensiones vacías
+
+
+class ClaseCalificacionSalida(BaseModel):
+    """Asignación (curso + materia + profesor) en la que se registran notas."""
+
+    id_asignacion: int
+    curso: str
+    materia: str
+    profesor: str
+
+
+class ClasesCalificacionSalida(BaseModel):
+    """Lo que necesita la pantalla del docente o del administrador para elegir clase y trimestre."""
+
+    gestion: int | None
+    nota_minima: float | None
+    periodos: list[PeriodoCalificacionSalida]
+    dimensiones: list[DimensionSalida]
+    clases: list[ClaseCalificacionSalida]
+
+
+class NotaEstudianteSalida(BaseModel):
+    ci: str
+    nombre_persona: str
+    apellidos: str
+    puntajes: dict[int, float]   # id_dimension -> puntaje (solo las registradas)
+    nota_final: float | None     # None: aún sin ninguna nota en esa materia y trimestre
+    observacion: str | None
+
+
+class PlanillaSalida(BaseModel):
+    """Planilla de una clase en un trimestre."""
+
+    clase: ClaseCalificacionSalida
+    periodo: PeriodoCalificacionSalida
+    nota_minima: float
+    dimensiones: list[DimensionSalida]
+    editable: bool
+    motivo_no_editable: str | None
+    estudiantes: list[NotaEstudianteSalida]
+
+
+def _limpiar_texto(valor):
+    if isinstance(valor, str):
+        return " ".join(valor.split()) or None
+    return valor
+
+
+class NotaEstudianteEntrada(BaseModel):
+    ci_estudiante: str = Field(min_length=1, max_length=20)
+    # id_dimension -> puntaje; None borra esa dimensión. Las dimensiones que no se envían no cambian.
+    puntajes: dict[int, float | None] = Field(default_factory=dict)
+    observacion: str | None = Field(default=None, max_length=300)
+
+    @field_validator("ci_estudiante", mode="before")
+    @classmethod
+    def limpiar_ci(cls, valor):
+        return valor.strip() if isinstance(valor, str) else valor
+
+    @field_validator("observacion", mode="before")
+    @classmethod
+    def limpiar_observacion(cls, valor):
+        return _limpiar_texto(valor)
+
+
+class PlanillaGuardar(BaseModel):
+    """Notas de la clase en un trimestre (solo se envían los estudiantes que cambiaron)."""
+
+    id_periodo: int
+    notas: list[NotaEstudianteEntrada] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def sin_repetidos(self):
+        cis = [n.ci_estudiante for n in self.notas]
+        if len(cis) != len(set(cis)):
+            raise ValueError("Un estudiante aparece más de una vez.")
+        return self
+
+
+class MateriaNotasSalida(BaseModel):
+    id_materia: int
+    materia: str
+    profesor: str
+    puntajes: dict[int, float]
+    nota_final: float | None
+    observacion: str | None
+
+
+class MisCalificacionesSalida(BaseModel):
+    """Notas del estudiante en un trimestre, por materia y dimensión."""
+
+    gestion: int | None
+    curso: str | None
+    nota_minima: float | None
+    periodos: list[PeriodoCalificacionSalida]
+    periodo: PeriodoCalificacionSalida | None
+    dimensiones: list[DimensionSalida]
+    autoevaluacion_editable: bool
+    motivo_no_editable: str | None
+    materias: list[MateriaNotasSalida]
+
+
+class AutoevaluacionEntrada(BaseModel):
+    id_materia: int
+    puntaje: float | None   # None borra la autoevaluación de esa materia
+
+
+class AutoevaluacionGuardar(BaseModel):
+    id_periodo: int
+    autoevaluaciones: list[AutoevaluacionEntrada] = Field(min_length=1)
+
+
+class CambioPeriodoSalida(BaseModel):
+    """Resultado de cerrar o reabrir un trimestre."""
+
+    periodo: str
+    estado_periodo: Literal["abierto", "cerrado"]
+    boletines: int | None   # boletines emitidos al cerrar (None al reabrir)
+
+
+# ============================================================
 # CU24 - GENERAR Y CONSULTAR BOLETÍN/LIBRETA
 # ============================================================
 

@@ -75,7 +75,7 @@ export default function PanelDocente() {
                   </Link>
                 </Button>
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/evaluacion/cu23">
+                  <Link to="/evaluacion/calificaciones">
                     <NotebookPenIcon /> Notas
                   </Link>
                 </Button>

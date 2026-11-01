@@ -83,18 +83,20 @@ const MENU: ItemMenu[] = [
   { ruta: '/evaluacion/asistencia', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['administrador'] },
   // CU22 - Consultar historial de asistencia
   { ruta: '/evaluacion/historial-asistencia', texto: 'Historial de asistencia', icono: CalendarCheckIcon, roles: ['administrador'] },
+  // CU23 - Registrar calificaciones (el administrador corrige cualquier clase y cierra o reabre trimestres)
+  { ruta: '/evaluacion/calificaciones', texto: 'Calificaciones', icono: NotebookPenIcon, roles: ['administrador'] },
   // CU24 - Generar y consultar boletín/libreta
   { ruta: '/evaluacion/boletines', texto: 'Boletines', icono: FileTextIcon, roles: ['administrador'] },
   // Docente
   { ruta: '/horarios/consulta', texto: 'Mis horarios', icono: CalendarDaysIcon, roles: ['profesor'] },
   { ruta: '/evaluacion/asistencia', texto: 'Asistencia', icono: ClipboardCheckIcon, roles: ['profesor'] },
   { ruta: '/evaluacion/historial-asistencia', texto: 'Historial de asistencia', icono: CalendarCheckIcon, roles: ['profesor'] },
-  { ruta: '/evaluacion/cu23', texto: 'Calificaciones', icono: NotebookPenIcon, roles: ['profesor'] },
+  { ruta: '/evaluacion/calificaciones', texto: 'Calificaciones', icono: NotebookPenIcon, roles: ['profesor'] },
   { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: GraduationCapIcon, roles: ['profesor'] },
   { ruta: '/personas/cu07', texto: 'Seguimiento', icono: HeartPulseIcon, roles: ['profesor'] },
   // Estudiante
   { ruta: '/horarios/consulta', texto: 'Mi horario', icono: CalendarDaysIcon, roles: ['estudiante'] },
-  { ruta: '/evaluacion/cu23', texto: 'Mis calificaciones', icono: NotebookPenIcon, roles: ['estudiante'] },
+  { ruta: '/evaluacion/calificaciones', texto: 'Mis calificaciones', icono: NotebookPenIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/boletines', texto: 'Boletín', icono: FileTextIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/historial-asistencia', texto: 'Mi asistencia', icono: CalendarCheckIcon, roles: ['estudiante'] },
   { ruta: '/academico/cu17', texto: 'Mis inscripciones', icono: HistoryIcon, roles: ['estudiante'] },
