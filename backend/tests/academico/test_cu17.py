@@ -140,3 +140,22 @@ async def test_cu17_listar_estudiantes_segun_rol(cliente, admin):
     assert r_admin.status_code == 200
     lista_admin = r_admin.json()
     assert len(lista_admin) > len(lista_tut)
+
+
+@pytest.mark.asyncio
+async def test_cu17_admin_encuentra_estudiantes_dados_de_baja(cliente, admin):
+    """Un estudiante dado de baja sigue apareciendo en el buscador (marcado como inactivo) y su historial se consulta."""
+    async with bd._fabrica() as sesion:
+        await sesion.execute(text("UPDATE persona SET estado_persona = 'inactivo' WHERE ci = '4500002'"))
+        await sesion.commit()
+
+    r = await cliente.get("/academico/inscripciones/historial/estudiantes", headers=admin,
+                          params={"buscar": "4500002"})
+    assert r.status_code == 200
+    encontrados = {e["ci"]: e for e in r.json()}
+    assert "4500002" in encontrados
+    assert encontrados["4500002"]["activo"] is False
+
+    r = await cliente.get("/academico/inscripciones/historial/4500002", headers=admin)
+    assert r.status_code == 200
+    assert all("nota_minima" in i for i in r.json()["inscripciones"])

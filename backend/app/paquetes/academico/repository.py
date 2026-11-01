@@ -1093,13 +1093,14 @@ async def listar_estudiantes_visibles_cu17(sesion: AsyncSession, rol: str, ci_us
                     WHERE i.ci_estudiante_inscripcion = e.ci_estudiante
                     ORDER BY g.anio DESC, i.id_inscripcion DESC
                     LIMIT 1
-               ) AS curso_actual
+               ) AS curso_actual,
+               p.estado_persona = 'activo' AS activo
           FROM estudiante e
           JOIN persona p ON p.ci = e.ci_estudiante
-         WHERE p.estado_persona = 'activo'
+         WHERE TRUE      -- también los dados de baja: su historial se sigue consultando
            {filtro_rol}
            {filtro_buscar}
-         ORDER BY p.apellidos, p.nombre_persona
+         ORDER BY (p.estado_persona = 'activo') DESC, p.apellidos, p.nombre_persona
          LIMIT 100
     """
     res = await sesion.execute(text(sql), params)
@@ -1127,7 +1128,8 @@ async def historial_inscripciones_cu17(sesion: AsyncSession, ci: str):
                      FROM v_nota_final nf
                     WHERE nf.ci_estudiante = i.ci_estudiante_inscripcion
                       AND nf.id_gestion = i.id_gestion_inscripcion
-               ) AS promedio_anual
+               ) AS promedio_anual,
+               g.nota_minima_aprobacion AS nota_minima
           FROM inscripcion i
           JOIN gestion g  ON g.id_gestion = i.id_gestion_inscripcion
           JOIN v_curso vc ON vc.id_curso = i.id_curso_inscripcion

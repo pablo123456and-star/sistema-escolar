@@ -634,6 +634,7 @@ class EstudianteHistorialItem(BaseModel):
     apellidos: str
     codigo_rude: str | None = None
     curso_actual: str | None = None
+    activo: bool = True
 
 
 class HistorialInscripcionItem(BaseModel):
@@ -647,6 +648,7 @@ class HistorialInscripcionItem(BaseModel):
     motivo_retiro: str | None = None
     resultado_final: Literal["promovido", "reprobado"] | None = None
     promedio_anual: _Decimal | None = None
+    nota_minima: _Decimal = _Decimal("51")
 
 
 class HistorialEstudianteSalida(BaseModel):

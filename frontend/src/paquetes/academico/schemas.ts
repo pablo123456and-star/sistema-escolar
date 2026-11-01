@@ -435,6 +435,7 @@ export type EstudianteHistorialItem = {
   apellidos: string
   codigo_rude?: string | null
   curso_actual?: string | null
+  activo: boolean
 }
 
 export type HistorialInscripcionItem = {
@@ -448,6 +449,7 @@ export type HistorialInscripcionItem = {
   motivo_retiro?: string | null
   resultado_final?: 'promovido' | 'reprobado' | null
   promedio_anual?: number | string | null
+  nota_minima: number | string
 }
 
 export type HistorialEstudianteSalida = {

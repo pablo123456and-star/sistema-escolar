@@ -13,6 +13,9 @@ Casos mínimos exigidos:
   "El aula tiene clases asignadas: márquela como inactiva".
 """
 import pytest
+from sqlalchemy import text
+
+from app.nucleo import bd
 from tests.conftest import USUARIOS, iniciar
 
 
@@ -194,3 +197,33 @@ async def test_cu18_eliminar_aula_con_asignaciones_409(cliente, admin):
     assert r_del.status_code == 409, f"Se esperaba 409 pero se obtuvo {r_del.status_code}: {r_del.text}"
     detalle = r_del.json()["detalle"]
     assert "El aula tiene clases asignadas: márquela como inactiva" in detalle
+
+
+@pytest.mark.asyncio
+async def test_cu18_alta_cambio_y_baja_quedan_en_bitacora(cliente, admin):
+    """Registrar, cambiar el estado y eliminar un aula deja tres filas en la bitácora (la tabla no tiene trigger)."""
+    async def contar():
+        async with bd._fabrica() as sesion:
+            return await sesion.scalar(text(
+                "SELECT count(*) FROM bitacora WHERE tabla_afectada = 'aula' AND modulo = 'HORARIOS'"))
+
+    antes = await contar()
+    r = await cliente.post("/horarios/aulas", headers=admin, json={"numero": "BIT-01", "capacidad": 20})
+    assert r.status_code == 201
+    id_aula = r.json()["id_aula"]
+    r = await cliente.patch(f"/horarios/aulas/{id_aula}", headers=admin, json={"estado_aula": "mantenimiento"})
+    assert r.status_code == 200
+    # Guardar sin cambios no anota nada
+    r = await cliente.patch(f"/horarios/aulas/{id_aula}", headers=admin, json={"estado_aula": "mantenimiento"})
+    assert r.status_code == 200
+    assert (await cliente.delete(f"/horarios/aulas/{id_aula}", headers=admin)).status_code == 204
+    assert await contar() == antes + 3
+
+    async with bd._fabrica() as sesion:
+        cambio = (await sesion.execute(text(
+            """SELECT accion, datos_anteriores, datos_nuevos FROM bitacora
+                WHERE tabla_afectada = 'aula' AND registro_id = :id AND operacion = 'UPDATE'"""),
+            {"id": str(id_aula)})).one()
+    assert cambio.accion == "Cambió el estado del aula BIT-01 a mantenimiento"
+    assert cambio.datos_anteriores == {"estado_aula": "disponible"}
+    assert cambio.datos_nuevos == {"estado_aula": "mantenimiento"}

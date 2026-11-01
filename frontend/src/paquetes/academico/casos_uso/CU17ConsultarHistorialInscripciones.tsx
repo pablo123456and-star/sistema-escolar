@@ -84,11 +84,18 @@ export default function CU17ConsultarHistorialInscripciones() {
   const rol = usuario?.rol
 
   const [busquedaAdmin, setBusquedaAdmin] = useState('')
+  const [busquedaEnviada, setBusquedaEnviada] = useState('')
   const [ciSeleccionado, setCiSeleccionado] = useState<string | null>(null)
+
+  // Espera a que el administrador deje de escribir antes de consultar al servidor
+  useEffect(() => {
+    const t = setTimeout(() => setBusquedaEnviada(busquedaAdmin.trim()), 300)
+    return () => clearTimeout(t)
+  }, [busquedaAdmin])
 
   // Lista de estudiantes visibles para el rol actual
   const { data: listaEstudiantes = [], isLoading: cargandoLista } = useEstudiantesHistorial(
-    rol === 'administrador' ? busquedaAdmin : undefined
+    rol === 'administrador' ? busquedaEnviada : undefined
   )
 
   // Si es estudiante, fijar su propio CI
@@ -228,7 +235,14 @@ export default function CU17ConsultarHistorialInscripciones() {
                           : 'border-border/70 bg-card hover:bg-muted/50'
                       }`}
                     >
-                      <div className="font-semibold text-foreground truncate">{est.nombre_completo}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground truncate">{est.nombre_completo}</span>
+                        {!est.activo && (
+                          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            Dado de baja
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground flex justify-between mt-1">
                         <span>CI: {est.ci}</span>
                         {est.codigo_rude && <span>RUDE: {est.codigo_rude}</span>}
@@ -244,7 +258,7 @@ export default function CU17ConsultarHistorialInscripciones() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground italic">
-                {busquedaAdmin ? 'No se encontraron estudiantes con ese criterio.' : 'Mostrando primeros estudiantes activos.'}
+                {busquedaEnviada ? 'No se encontraron estudiantes con ese criterio.' : 'No hay estudiantes registrados.'}
               </p>
             )}
           </CardContent>
@@ -369,7 +383,7 @@ export default function CU17ConsultarHistorialInscripciones() {
                         {item.promedio_anual !== null && item.promedio_anual !== undefined ? (
                           <span
                             className={`font-mono font-bold px-2 py-0.5 rounded text-sm ${
-                              Number(item.promedio_anual) >= 51
+                              Number(item.promedio_anual) >= Number(item.nota_minima)
                                 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                                 : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
                             }`}
