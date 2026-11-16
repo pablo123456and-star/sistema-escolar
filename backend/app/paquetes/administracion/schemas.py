@@ -250,3 +250,128 @@ class MorosoSalida(BaseModel):
 class MorososSalida(BaseModel):
     total_deuda: float
     morosos: list[MorosoSalida]
+
+
+# ============================================================
+# CU27 - GESTIONAR COMUNICADOS Y CITACIONES
+# ============================================================
+
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+TipoComunicado = Literal["general", "citacion"]
+Alcance = Literal["todos", "curso", "estudiante"]
+
+# Bolivia no tiene horario de verano: siempre UTC-4
+HORA_BOLIVIA = timezone(timedelta(hours=-4))
+
+
+class ComunicadoCrear(BaseModel):
+    """Comunicado o citación a publicar. Solo se usa el destinatario que corresponde al alcance."""
+
+    titulo: str = Field(min_length=3, max_length=150)
+    contenido: str = Field(min_length=5, max_length=5000)
+    tipo_comunicado: TipoComunicado = "general"
+    alcance: Alcance
+    id_curso: int | None = None
+    ci_estudiante: str | None = Field(default=None, max_length=20)
+    fecha_citacion: datetime | None = None
+
+    _limpiar_titulo = field_validator("titulo", mode="before")(_limpiar_texto)
+    _limpiar_ci_est = field_validator("ci_estudiante", mode="before")(_limpiar_ci)
+
+    @field_validator("contenido", mode="before")
+    @classmethod
+    def _limpiar_contenido(cls, valor):
+        return valor.strip() if isinstance(valor, str) else valor
+
+    @field_validator("fecha_citacion")
+    @classmethod
+    def _con_zona(cls, valor: datetime | None):
+        """Una fecha sin zona horaria (ej. '2026-11-20T10:00' de un formulario) es hora de Bolivia."""
+        if valor is not None and valor.tzinfo is None:
+            return valor.replace(tzinfo=HORA_BOLIVIA)
+        return valor
+
+    @model_validator(mode="after")
+    def _destinatario_segun_alcance(self):
+        if self.tipo_comunicado == "citacion":
+            if self.alcance != "estudiante":
+                raise ValueError("Una citación siempre se dirige a un estudiante (a sus tutores).")
+            if self.fecha_citacion is None:
+                raise ValueError("Indique la fecha y hora de la citación.")
+        else:
+            self.fecha_citacion = None
+        if self.alcance == "curso":
+            if self.id_curso is None:
+                raise ValueError("Elija el curso al que va dirigido el comunicado.")
+            self.ci_estudiante = None
+        elif self.alcance == "estudiante":
+            if not self.ci_estudiante:
+                raise ValueError("Elija el estudiante al que va dirigido el comunicado.")
+            self.id_curso = None
+        else:
+            self.id_curso = None
+            self.ci_estudiante = None
+        return self
+
+
+class ComunicadoSalida(BaseModel):
+    id_comunicado: int
+    titulo: str
+    contenido: str
+    tipo_comunicado: TipoComunicado
+    alcance: Alcance
+    destinatario: str             # "Toda la comunidad", el curso o el estudiante
+    id_curso: int | None
+    ci_estudiante: str | None
+    gestion: int
+    fecha_publicacion: datetime
+    fecha_citacion: datetime | None
+    ci_autor: str
+    autor: str
+    rol_autor: str | None
+    es_mio: bool                  # el usuario conectado es el autor
+    es_destinatario: bool         # le llegó al usuario conectado (puede marcarlo como leído)
+    leido_en: datetime | None     # cuándo lo leyó el usuario conectado
+    lecturas: int | None          # cuántos lo leyeron (solo para el autor y el administrador)
+
+
+class BandejaSalida(BaseModel):
+    comunicados: list[ComunicadoSalida]
+    no_leidos: int
+
+
+class CursoDestinoSalida(BaseModel):
+    id_curso: int
+    nombre_curso: str
+
+
+class EstudianteDestinoSalida(BaseModel):
+    ci: str
+    nombre: str
+    curso: str
+
+
+class DestinosSalida(BaseModel):
+    """A quién puede publicar el usuario conectado en la gestión abierta."""
+
+    gestion: int | None
+    puede_todos: bool
+    cursos: list[CursoDestinoSalida]
+    estudiantes: list[EstudianteDestinoSalida]
+
+
+class LectorSalida(BaseModel):
+    ci: str
+    nombre: str
+    relacion: str                 # "Estudiante", "Tutor de ...", o el rol si el alcance es 'todos'
+    tiene_cuenta: bool            # sin cuenta de usuario no puede leerlo en el sistema
+    leido_en: datetime | None
+
+
+class LecturasSalida(BaseModel):
+    id_comunicado: int
+    titulo: str
+    total_destinatarios: int
+    total_leidos: int
+    destinatarios: list[LectorSalida]

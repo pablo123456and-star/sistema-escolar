@@ -7,7 +7,8 @@ Reglas de negocio comunes del paquete administracion (compartido).
 
 Las reglas propias de cada caso de uso están en el encabezado de su archivo en casos_uso/.
 
-Implementado por ahora: lo que usa el CU25 (cajero administrativo, quién ve los pagos).
+Implementado por ahora: lo que usa el CU25 (cajero administrativo, quién ve los pagos) y el CU27
+(a quién puede publicar cada rol, quién ve el registro de lectura).
 """
 # ============================================================
 # CU25 - REGISTRAR PAGO DE MENSUALIDAD
@@ -16,7 +17,7 @@ Implementado por ahora: lo que usa el CU25 (cajero administrativo, quién ve los
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.nucleo.dependencias import UsuarioActual
-from app.nucleo.errores import ErrorNegocio, SinPermiso
+from app.nucleo.errores import ErrorNegocio, NoEncontrado, SinPermiso
 from app.paquetes.administracion import repository as repo
 
 
@@ -36,3 +37,44 @@ async def pagos_visibles(sesion: AsyncSession, usuario: UsuarioActual, ci_estudi
     if usuario.rol == "tutor" and await repo.es_tutor_cu25(sesion, usuario.ci, ci_estudiante):
         return
     raise SinPermiso("Solo puede consultar los pagos propios o de sus estudiantes.")
+
+
+# ============================================================
+# CU27 - GESTIONAR COMUNICADOS Y CITACIONES
+# ============================================================
+
+from app.paquetes.administracion.schemas import ComunicadoCrear  # noqa: E402
+
+PUBLICAN = ("administrador", "profesor")
+
+
+async def validar_destino(sesion: AsyncSession, usuario: UsuarioActual, datos: ComunicadoCrear, id_gestion: int) -> None:
+    """Administrador: a todos, a cualquier curso o a cualquier estudiante inscrito.
+    Profesor: solo a los cursos donde enseña o a sus estudiantes; nunca a 'todos'."""
+    if usuario.rol not in PUBLICAN:
+        raise SinPermiso("Solo el administrador y los docentes publican comunicados.")
+    profesor = usuario.ci if usuario.rol == "profesor" else None
+
+    if datos.alcance == "todos":
+        if profesor:
+            raise SinPermiso("Un docente no puede publicar a toda la comunidad: elija uno de sus cursos o estudiantes.")
+        return
+
+    if datos.alcance == "curso":
+        if not await repo.cursos_destino_cu27(sesion, id_gestion, None, datos.id_curso):
+            raise NoEncontrado("No existe ese curso.")
+        if profesor and not await repo.cursos_destino_cu27(sesion, id_gestion, profesor, datos.id_curso):
+            raise SinPermiso("Solo puede publicar a los cursos donde dicta clases.")
+        return
+
+    # alcance == "estudiante"
+    if not await repo.estudiantes_destino_cu27(sesion, id_gestion, None, datos.ci_estudiante):
+        raise NoEncontrado("El estudiante no tiene una inscripción activa en la gestión abierta.")
+    if profesor and not await repo.estudiantes_destino_cu27(sesion, id_gestion, profesor, datos.ci_estudiante):
+        raise SinPermiso("Solo puede enviar comunicados o citaciones a estudiantes de sus cursos.")
+
+
+def puede_ver_lecturas_o_eliminar(usuario: UsuarioActual, comunicado) -> None:
+    """El registro de lectura y la eliminación son del autor o del administrador."""
+    if usuario.rol != "administrador" and not comunicado.es_mio:
+        raise SinPermiso("Solo el autor del comunicado o el administrador pueden hacer esto.")

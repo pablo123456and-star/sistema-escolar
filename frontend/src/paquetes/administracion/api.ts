@@ -6,6 +6,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/nucleo/api'
 import type {
   Aranceles,
+  Bandeja,
+  Comunicado,
+  ComunicadoNuevo,
+  Destinos,
+  Lecturas,
   ArancelNivel,
   Beca,
   Becas,
@@ -143,6 +148,67 @@ export function useConfirmarPagoEnLinea() {
   return useMutation({
     mutationFn: (id_sesion: string) =>
       api<Recibo>('/administracion/pagos/en-linea/confirmar', { metodo: 'POST', cuerpo: { id_sesion } }),
+    onSuccess: invalidar,
+  })
+}
+
+// ============================================================
+// CU27 - GESTIONAR COMUNICADOS Y CITACIONES
+// ============================================================
+
+const COMUNICADOS = ['administracion', 'comunicados'] as const
+
+/** Tras publicar, leer o eliminar: se recargan la bandeja y los registros de lectura. */
+function useInvalidarComunicados() {
+  const cliente = useQueryClient()
+  return () => cliente.invalidateQueries({ queryKey: COMUNICADOS })
+}
+
+/** Comunicados que ve el usuario conectado (con su estado de lectura y los no leídos). */
+export function useBandeja() {
+  return useQuery({ queryKey: [...COMUNICADOS, 'bandeja'], queryFn: () => api<Bandeja>('/administracion/comunicados') })
+}
+
+/** Cursos y estudiantes a los que puede publicar (solo administrador y profesor). */
+export function useDestinosComunicado(habilitado: boolean) {
+  return useQuery({
+    queryKey: [...COMUNICADOS, 'destinos'],
+    queryFn: () => api<Destinos>('/administracion/comunicados/destinos'),
+    enabled: habilitado,
+  })
+}
+
+export function usePublicarComunicado() {
+  const invalidar = useInvalidarComunicados()
+  return useMutation({
+    mutationFn: (datos: ComunicadoNuevo) => api<Comunicado>('/administracion/comunicados', { metodo: 'POST', cuerpo: datos }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useMarcarLeido() {
+  const invalidar = useInvalidarComunicados()
+  return useMutation({
+    mutationFn: (id_comunicado: number) =>
+      api<Comunicado>(`/administracion/comunicados/${id_comunicado}/leido`, { metodo: 'POST' }),
+    onSuccess: invalidar,
+  })
+}
+
+/** Registro de lectura (autor o administrador). */
+export function useLecturas(id_comunicado: number | null) {
+  return useQuery({
+    queryKey: [...COMUNICADOS, 'lecturas', id_comunicado],
+    queryFn: () => api<Lecturas>(`/administracion/comunicados/${id_comunicado}/lecturas`),
+    enabled: id_comunicado !== null,
+  })
+}
+
+export function useEliminarComunicado() {
+  const invalidar = useInvalidarComunicados()
+  return useMutation({
+    mutationFn: (id_comunicado: number) =>
+      api<{ mensaje: string }>(`/administracion/comunicados/${id_comunicado}`, { metodo: 'DELETE' }),
     onSuccess: invalidar,
   })
 }

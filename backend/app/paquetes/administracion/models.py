@@ -4,7 +4,8 @@ Modelos SQLAlchemy (ORM) del paquete administracion (compartido).
 Tablas (lectura y escritura): arancel, beca, pago_mensualidad, inventario, movimiento_inventario, comunicado, comunicado_lectura.
 Vistas (solo lectura): v_estado_pagos.
 
-Implementado por ahora: arancel, beca y pago_mensualidad (CU25). El resto se agrega con los CU26 y CU27.
+Implementado por ahora: arancel, beca y pago_mensualidad (CU25); comunicado y comunicado_lectura (CU27).
+Inventario se agrega con el CU26.
 """
 # ============================================================
 # CU25 - REGISTRAR PAGO DE MENSUALIDAD
@@ -13,7 +14,7 @@ Implementado por ahora: arancel, beca y pago_mensualidad (CU25). El resto se agr
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Integer, Numeric, SmallInteger, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, SmallInteger, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.nucleo.bd import Base
@@ -65,3 +66,40 @@ class PagoMensualidad(Base):
     id_gestion_pago: Mapped[int] = mapped_column(ForeignKey("gestion.id_gestion"))
     creado_en: Mapped[datetime] = mapped_column(server_default="now()")
     actualizado_en: Mapped[datetime] = mapped_column(server_default="now()")
+
+
+# ============================================================
+# CU27 - GESTIONAR COMUNICADOS Y CITACIONES
+# ============================================================
+
+
+class Comunicado(Base):
+    """Aviso del colegio. Alcance: 'todos', un 'curso' o un 'estudiante' (sus tutores).
+    Una citación siempre es para un estudiante y tiene fecha (lo aseguran los CHECK de la BD)."""
+
+    __tablename__ = "comunicado"
+
+    id_comunicado: Mapped[int] = mapped_column(Integer, primary_key=True)
+    titulo: Mapped[str] = mapped_column(String(150))
+    contenido: Mapped[str] = mapped_column(Text)
+    tipo_comunicado: Mapped[str] = mapped_column(String(20), server_default="general")
+    alcance: Mapped[str] = mapped_column(String(20))
+    fecha_publicacion: Mapped[datetime] = mapped_column(server_default="now()")
+    fecha_citacion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    id_gestion_comunicado: Mapped[int] = mapped_column(ForeignKey("gestion.id_gestion"))
+    id_curso_comunicado: Mapped[int | None] = mapped_column(ForeignKey("curso.id_curso"))
+    ci_estudiante_comunicado: Mapped[str | None] = mapped_column(ForeignKey("estudiante.ci_estudiante"))
+    ci_autor: Mapped[str] = mapped_column(ForeignKey("persona.ci"))
+    creado_en: Mapped[datetime] = mapped_column(server_default="now()")
+
+
+class ComunicadoLectura(Base):
+    """Quién leyó un comunicado y cuándo (PK comunicado + persona: una sola vez por persona)."""
+
+    __tablename__ = "comunicado_lectura"
+
+    id_comunicado_lectura: Mapped[int] = mapped_column(
+        ForeignKey("comunicado.id_comunicado", ondelete="CASCADE"), primary_key=True
+    )
+    ci_persona_lectura: Mapped[str] = mapped_column(ForeignKey("persona.ci"), primary_key=True)
+    leido_en: Mapped[datetime] = mapped_column(server_default="now()")

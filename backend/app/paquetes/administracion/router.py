@@ -13,7 +13,6 @@ router = APIRouter(prefix="/administracion", tags=["administracion"])
 
 # PENDIENTE: endpoints de
 #   cu26_gestionar_inventario
-#   cu27_gestionar_comunicados
 
 # ============================================================
 # CU25 - REGISTRAR PAGO DE MENSUALIDAD
@@ -128,3 +127,62 @@ async def anular(datos: MotivoEntrada, usuario: Administrador, sesion: Sesion, i
 @router.get("/morosos", response_model=MorososSalida, summary="CU25 - Estudiantes con cuotas atrasadas")
 async def morosos(_: Administrador, sesion: Sesion):
     return await cu25.morosos(sesion)
+
+
+# ============================================================
+# CU27 - GESTIONAR COMUNICADOS Y CITACIONES
+# ============================================================
+
+from typing import Literal  # noqa: E402
+
+from app.nucleo.esquemas import Mensaje  # noqa: E402
+from app.paquetes.administracion.casos_uso import cu27_gestionar_comunicados as cu27  # noqa: E402
+from app.paquetes.administracion.schemas import (  # noqa: E402
+    BandejaSalida, ComunicadoCrear, ComunicadoSalida, DestinosSalida, LecturasSalida,
+)
+
+LectorComunicados = Annotated[
+    UsuarioActual, Depends(requiere_rol("administrador", "profesor", "estudiante", "tutor"))
+]
+PublicaComunicados = Annotated[UsuarioActual, Depends(requiere_rol("administrador", "profesor"))]
+
+
+@router.get("/comunicados", response_model=BandejaSalida,
+            summary="CU27 - Comunicados y citaciones que ve el usuario (con su estado de lectura)")
+async def comunicados(usuario: LectorComunicados, sesion: Sesion,
+                      tipo: Literal["general", "citacion"] | None = None):
+    return await cu27.bandeja(sesion, usuario, tipo)
+
+
+@router.get("/comunicados/destinos", response_model=DestinosSalida,
+            summary="CU27 - Cursos y estudiantes a los que el usuario puede publicar")
+async def destinos_comunicado(usuario: PublicaComunicados, sesion: Sesion):
+    return await cu27.destinos(sesion, usuario)
+
+
+@router.post("/comunicados", response_model=ComunicadoSalida, status_code=status.HTTP_201_CREATED,
+             summary="CU27 - Publicar un comunicado o una citación")
+async def publicar_comunicado(datos: ComunicadoCrear, usuario: PublicaComunicados, sesion: Sesion):
+    return await cu27.publicar(sesion, usuario, datos)
+
+
+@router.get("/comunicados/{id_comunicado}", response_model=ComunicadoSalida, summary="CU27 - Ver un comunicado")
+async def comunicado(usuario: LectorComunicados, sesion: Sesion, id_comunicado: int):
+    return await cu27.detalle(sesion, usuario, id_comunicado)
+
+
+@router.post("/comunicados/{id_comunicado}/leido", response_model=ComunicadoSalida,
+             summary="CU27 - Marcar un comunicado como leído (una vez por persona)")
+async def marcar_comunicado_leido(usuario: LectorComunicados, sesion: Sesion, id_comunicado: int):
+    return await cu27.marcar_leido(sesion, usuario, id_comunicado)
+
+
+@router.get("/comunicados/{id_comunicado}/lecturas", response_model=LecturasSalida,
+            summary="CU27 - Registro de lectura: quién leyó el comunicado y quién no")
+async def lecturas_comunicado(usuario: PublicaComunicados, sesion: Sesion, id_comunicado: int):
+    return await cu27.lecturas(sesion, usuario, id_comunicado)
+
+
+@router.delete("/comunicados/{id_comunicado}", response_model=Mensaje, summary="CU27 - Eliminar un comunicado")
+async def eliminar_comunicado(usuario: PublicaComunicados, sesion: Sesion, id_comunicado: int):
+    return await cu27.eliminar(sesion, usuario, id_comunicado)
