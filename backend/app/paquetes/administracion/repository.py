@@ -237,3 +237,177 @@ async def morosos_cu25(sesion: AsyncSession):
                       ORDER BY v.estudiante, v.anio, v.mes""")
         )
     ).all()
+
+
+# ============================================================
+# CU27 - GESTIONAR COMUNICADOS Y CITACIONES
+# ============================================================
+
+# A quién LE LLEGA un comunicado (alias c = comunicado, :ci = usuario conectado):
+#   - 'todos': a toda la comunidad (menos al autor).
+#   - 'curso': a los estudiantes inscritos en ese curso en la gestión del comunicado y a sus tutores.
+#   - 'estudiante': al estudiante y a sus tutores. Una citación solo a sus tutores.
+_PARA_TODOS = "(c.alcance = 'todos' AND c.ci_autor <> :ci)"
+_DESTINATARIO = {
+    "administrador": _PARA_TODOS,
+    "profesor": _PARA_TODOS,
+    "estudiante": f"""({_PARA_TODOS}
+        OR (c.alcance = 'curso' AND EXISTS (
+                SELECT 1 FROM inscripcion i
+                 WHERE i.ci_estudiante_inscripcion = :ci
+                   AND i.id_curso_inscripcion = c.id_curso_comunicado
+                   AND i.id_gestion_inscripcion = c.id_gestion_comunicado))
+        OR (c.alcance = 'estudiante' AND c.tipo_comunicado = 'general' AND c.ci_estudiante_comunicado = :ci))""",
+    "tutor": f"""({_PARA_TODOS}
+        OR (c.alcance = 'curso' AND EXISTS (
+                SELECT 1 FROM inscripcion i
+                  JOIN tutor_estudiante te ON te.ci_estudiante_tutorestudiante = i.ci_estudiante_inscripcion
+                 WHERE te.ci_tutor_tutorestudiante = :ci
+                   AND i.id_curso_inscripcion = c.id_curso_comunicado
+                   AND i.id_gestion_inscripcion = c.id_gestion_comunicado))
+        OR (c.alcance = 'estudiante' AND EXISTS (
+                SELECT 1 FROM tutor_estudiante te
+                 WHERE te.ci_tutor_tutorestudiante = :ci
+                   AND te.ci_estudiante_tutorestudiante = c.ci_estudiante_comunicado)))""",
+}
+# Qué comunicados VE cada rol: el administrador todos; el profesor los suyos, los que le llegan y los de
+# los cursos donde enseña; estudiante y tutor solo los que les llegan.
+_VISIBLE = {
+    "administrador": "TRUE",
+    "profesor": f"""(c.ci_autor = :ci OR {_DESTINATARIO['profesor']}
+        OR (c.alcance = 'curso' AND EXISTS (
+                SELECT 1 FROM asignacion_profesor_clase a
+                 WHERE a.ci_profesor_asignacion = :ci
+                   AND a.id_curso_asignacion = c.id_curso_comunicado
+                   AND a.id_gestion_asignacion = c.id_gestion_comunicado)))""",
+    "estudiante": _DESTINATARIO["estudiante"],
+    "tutor": _DESTINATARIO["tutor"],
+}
+
+
+async def comunicados_cu27(sesion: AsyncSession, rol: str, ci: str, id_comunicado: int | None = None):
+    """Comunicados que ve el usuario (o uno solo), del más reciente al más antiguo, con su lectura."""
+    if rol not in _VISIBLE:
+        return []
+    filtro = "AND c.id_comunicado = :id" if id_comunicado is not None else ""
+    return (
+        await sesion.execute(
+            text(f"""SELECT c.id_comunicado, c.titulo, c.contenido, c.tipo_comunicado, c.alcance,
+                            c.id_curso_comunicado AS id_curso, c.ci_estudiante_comunicado AS ci_estudiante,
+                            g.anio AS gestion, c.fecha_publicacion, c.fecha_citacion, c.ci_autor,
+                            pa.nombre_persona || ' ' || pa.apellidos AS autor,
+                            (SELECT r.nombre_rol FROM usuario u JOIN rol r ON r.id_rol = u.id_rol_usuario
+                              WHERE u.ci_persona = c.ci_autor) AS rol_autor,
+                            CASE c.alcance WHEN 'todos' THEN 'Toda la comunidad'
+                                           WHEN 'curso' THEN vc.nombre_curso
+                                           ELSE pe.nombre_persona || ' ' || pe.apellidos END AS destinatario,
+                            c.ci_autor = :ci AS es_mio,
+                            {_DESTINATARIO[rol]} AS es_destinatario,
+                            l.leido_en,
+                            (SELECT count(*) FROM comunicado_lectura x
+                              WHERE x.id_comunicado_lectura = c.id_comunicado) AS lecturas
+                       FROM comunicado c
+                       JOIN gestion g  ON g.id_gestion = c.id_gestion_comunicado
+                       JOIN persona pa ON pa.ci = c.ci_autor
+                       LEFT JOIN v_curso vc ON vc.id_curso = c.id_curso_comunicado
+                       LEFT JOIN persona pe ON pe.ci = c.ci_estudiante_comunicado
+                       LEFT JOIN comunicado_lectura l
+                              ON l.id_comunicado_lectura = c.id_comunicado AND l.ci_persona_lectura = :ci
+                      WHERE {_VISIBLE[rol]} {filtro}
+                      ORDER BY c.fecha_publicacion DESC, c.id_comunicado DESC"""),
+            {"ci": ci, "id": id_comunicado},
+        )
+    ).all()
+
+
+async def marcar_leido_cu27(sesion: AsyncSession, id_comunicado: int, ci: str) -> None:
+    """Registra la lectura una sola vez (si ya estaba leído, se conserva la primera fecha)."""
+    await sesion.execute(
+        text("""INSERT INTO comunicado_lectura (id_comunicado_lectura, ci_persona_lectura)
+                VALUES (:id, :ci) ON CONFLICT DO NOTHING"""),
+        {"id": id_comunicado, "ci": ci},
+    )
+
+
+async def destinatarios_cu27(sesion: AsyncSession, id_comunicado: int):
+    """Personas a las que llega el comunicado, con su lectura (NULL si aún no lo leyó)."""
+    return (
+        await sesion.execute(
+            text("""WITH c AS (SELECT * FROM comunicado WHERE id_comunicado = :id),
+                    est AS (   -- estudiantes alcanzados (los del curso o el estudiante elegido)
+                         SELECT i.ci_estudiante_inscripcion AS ci
+                           FROM c JOIN inscripcion i ON i.id_curso_inscripcion = c.id_curso_comunicado
+                                                    AND i.id_gestion_inscripcion = c.id_gestion_comunicado
+                          WHERE c.alcance = 'curso'
+                         UNION
+                         SELECT c.ci_estudiante_comunicado FROM c WHERE c.alcance = 'estudiante'),
+                    dest AS (
+                         SELECT est.ci, 'Estudiante' AS relacion
+                           FROM est, c WHERE c.tipo_comunicado = 'general'
+                         UNION ALL
+                         SELECT te.ci_tutor_tutorestudiante,
+                                'Tutor de ' || pe.nombre_persona || ' ' || pe.apellidos
+                           FROM est JOIN tutor_estudiante te ON te.ci_estudiante_tutorestudiante = est.ci
+                           JOIN persona pe ON pe.ci = est.ci
+                         UNION ALL
+                         SELECT u.ci_persona, initcap(r.nombre_rol)
+                           FROM c, usuario u JOIN rol r ON r.id_rol = u.id_rol_usuario
+                          WHERE c.alcance = 'todos' AND u.estado_usuario = 'activo' AND u.ci_persona <> c.ci_autor)
+                    SELECT d.ci, p.nombre_persona || ' ' || p.apellidos AS nombre,
+                           string_agg(DISTINCT d.relacion, ', ') AS relacion,
+                           EXISTS (SELECT 1 FROM usuario u WHERE u.ci_persona = d.ci
+                                      AND u.estado_usuario = 'activo') AS tiene_cuenta,
+                           l.leido_en
+                      FROM dest d
+                      JOIN persona p ON p.ci = d.ci
+                      LEFT JOIN comunicado_lectura l ON l.id_comunicado_lectura = :id AND l.ci_persona_lectura = d.ci
+                     GROUP BY d.ci, p.nombre_persona, p.apellidos, l.leido_en
+                     ORDER BY l.leido_en IS NULL, p.apellidos, p.nombre_persona"""),
+            {"id": id_comunicado},
+        )
+    ).all()
+
+
+# ---------- Destinos posibles al publicar (gestión abierta) ----------
+
+async def cursos_destino_cu27(sesion: AsyncSession, id_gestion: int, ci_profesor: str | None,
+                              id_curso: int | None = None):
+    """Todos los cursos (administrador) o solo aquellos donde enseña el profesor en la gestión."""
+    filtros = []
+    if ci_profesor:
+        filtros.append("""EXISTS (SELECT 1 FROM asignacion_profesor_clase a
+                                   WHERE a.id_curso_asignacion = vc.id_curso AND a.id_gestion_asignacion = :g
+                                     AND a.ci_profesor_asignacion = :ci)""")
+    if id_curso is not None:
+        filtros.append("vc.id_curso = :curso")
+    donde = ("WHERE " + " AND ".join(filtros)) if filtros else ""
+    return (
+        await sesion.execute(
+            text(f"""SELECT vc.id_curso, vc.nombre_curso FROM v_curso vc {donde}
+                      ORDER BY vc.id_nivel, vc.orden_grado, vc.paralelo"""),
+            {"g": id_gestion, "ci": ci_profesor, "curso": id_curso},
+        )
+    ).all()
+
+
+async def estudiantes_destino_cu27(sesion: AsyncSession, id_gestion: int, ci_profesor: str | None,
+                                   ci_estudiante: str | None = None):
+    """Estudiantes con inscripción activa en la gestión (del profesor: solo los de sus cursos)."""
+    filtros = ""
+    if ci_profesor:
+        filtros += """ AND EXISTS (SELECT 1 FROM asignacion_profesor_clase a
+                                    WHERE a.id_curso_asignacion = i.id_curso_inscripcion
+                                      AND a.id_gestion_asignacion = :g AND a.ci_profesor_asignacion = :ci)"""
+    if ci_estudiante:
+        filtros += " AND i.ci_estudiante_inscripcion = :est"
+    return (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.apellidos || ' ' || p.nombre_persona AS nombre, vc.nombre_curso AS curso
+                       FROM inscripcion i
+                       JOIN persona p  ON p.ci = i.ci_estudiante_inscripcion
+                       JOIN v_curso vc ON vc.id_curso = i.id_curso_inscripcion
+                      WHERE i.id_gestion_inscripcion = :g AND i.estado_inscripcion = 'activa' {filtros}
+                      ORDER BY vc.id_nivel, vc.orden_grado, vc.paralelo, p.apellidos, p.nombre_persona"""),
+            {"g": id_gestion, "ci": ci_profesor, "est": ci_estudiante},
+        )
+    ).all()

@@ -116,7 +116,7 @@ const MENU: ItemMenu[] = [
   { ruta: '/administracion/pagos', texto: 'Pagos', icono: WalletIcon, roles: ['administrador', 'estudiante', 'tutor'] },
   // Reportes estáticos y dinámico (PDF y Excel)
   { ruta: '/reportes', texto: 'Reportes', icono: FileSpreadsheetIcon, roles: ['administrador'] },
-  { ruta: '/administracion/cu27', texto: 'Comunicados', icono: MegaphoneIcon, roles: ['profesor', 'estudiante', 'tutor'] },
+  { ruta: '/administracion/cu27', texto: 'Comunicados', icono: MegaphoneIcon, roles: ['administrador', 'profesor', 'estudiante', 'tutor'] },
 ]
 
 function NombreInstitucion({ claro }: { claro?: boolean }) {

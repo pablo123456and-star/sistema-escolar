@@ -137,3 +137,86 @@ export type Moroso = {
 }
 
 export type Morosos = { total_deuda: number; morosos: Moroso[] }
+
+// ============================================================
+// CU27 - GESTIONAR COMUNICADOS Y CITACIONES
+// ============================================================
+
+export type TipoComunicado = 'general' | 'citacion'
+export type Alcance = 'todos' | 'curso' | 'estudiante'
+
+export type Comunicado = {
+  id_comunicado: number
+  titulo: string
+  contenido: string
+  tipo_comunicado: TipoComunicado
+  alcance: Alcance
+  destinatario: string
+  id_curso: number | null
+  ci_estudiante: string | null
+  gestion: number
+  fecha_publicacion: string
+  fecha_citacion: string | null
+  ci_autor: string
+  autor: string
+  rol_autor: string | null
+  es_mio: boolean
+  es_destinatario: boolean
+  leido_en: string | null
+  lecturas: number | null
+}
+
+export type Bandeja = { comunicados: Comunicado[]; no_leidos: number }
+
+export type Destinos = {
+  gestion: number | null
+  puede_todos: boolean
+  cursos: { id_curso: number; nombre_curso: string }[]
+  estudiantes: { ci: string; nombre: string; curso: string }[]
+}
+
+export type Lector = { ci: string; nombre: string; relacion: string; tiene_cuenta: boolean; leido_en: string | null }
+
+export type Lecturas = {
+  id_comunicado: number
+  titulo: string
+  total_destinatarios: number
+  total_leidos: number
+  destinatarios: Lector[]
+}
+
+export const esquemaComunicado = z
+  .object({
+    titulo: z.string().trim().min(3, 'Mínimo 3 caracteres').max(150, 'Máximo 150 caracteres'),
+    contenido: z.string().trim().min(5, 'Mínimo 5 caracteres').max(5000, 'Máximo 5000 caracteres'),
+    tipo_comunicado: z.enum(['general', 'citacion']),
+    alcance: z.enum(['todos', 'curso', 'estudiante']),
+    id_curso: z.string(),
+    ci_estudiante: z.string(),
+    fecha_citacion: z.string(), // "2026-11-20T10:00" (input datetime-local, hora de Bolivia)
+  })
+  .superRefine((d, ctx) => {
+    if (d.alcance === 'curso' && !d.id_curso) ctx.addIssue({ code: 'custom', path: ['id_curso'], message: 'Elija el curso' })
+    if (d.alcance === 'estudiante' && !d.ci_estudiante)
+      ctx.addIssue({ code: 'custom', path: ['ci_estudiante'], message: 'Elija el estudiante' })
+    if (d.tipo_comunicado === 'citacion') {
+      if (d.alcance !== 'estudiante')
+        ctx.addIssue({ code: 'custom', path: ['alcance'], message: 'Una citación se dirige a un estudiante (sus tutores)' })
+      if (!d.fecha_citacion)
+        ctx.addIssue({ code: 'custom', path: ['fecha_citacion'], message: 'Indique la fecha y hora de la citación' })
+      else if (new Date(`${d.fecha_citacion}:00-04:00`) <= new Date())
+        ctx.addIssue({ code: 'custom', path: ['fecha_citacion'], message: 'La citación debe ser en una fecha futura' })
+    }
+  })
+export type DatosComunicado = z.infer<typeof esquemaComunicado>
+
+/** Cuerpo que espera el backend (POST /administracion/comunicados). */
+export type ComunicadoNuevo = {
+  titulo: string
+  contenido: string
+  tipo_comunicado: TipoComunicado
+  alcance: Alcance
+  id_curso: number | null
+  ci_estudiante: string | null
+  fecha_citacion: string | null
+}
