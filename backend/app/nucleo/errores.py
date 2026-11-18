@@ -70,6 +70,10 @@ MENSAJES_RESTRICCION = {
     "beca_porcentaje_descuento_check": "El porcentaje de beca debe ser mayor a 0 y como máximo 100.",
     "pago_mensualidad_numero_recibo_key": "El número de recibo ya fue usado.",
     "pago_mensualidad_ci_tutor_pago_ci_estudiante_pago_fkey": "La persona indicada no es tutor de ese estudiante.",
+    # CU26 - Gestionar inventario
+    "inventario_nombre_inventario_key": "Ya existe un bien con ese nombre en el inventario.",
+    "inventario_cantidad_inventario_check": "El stock de un bien no puede quedar en negativo.",
+    "inventario_stock_minimo_check": "El stock mínimo no puede ser negativo.",
     # CU18 - Gestionar aulas
     "aula_numero_key": "Ya existe un aula con ese número.",
     "aula_capacidad_check": "La capacidad del aula debe ser mayor a 0.",

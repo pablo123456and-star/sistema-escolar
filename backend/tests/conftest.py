@@ -2,7 +2,8 @@
 Configuración de pytest.
 
 Las pruebas de los casos de uso usan una base local creada con los scripts
-01 a 08 de basededato/sql (datos de prueba incluidos). Se indica con la
+01 a 08 de basededato/sql (datos de prueba incluidos), más el 09 y el 11
+(el CU26 usa la columna stock_minimo del script 11). Se indica con la
 variable TEST_DATABASE_URL, por ejemplo (PowerShell):
 
     $env:TEST_DATABASE_URL = "postgresql+asyncpg://postgres:TU_CONTRASENA@localhost:5432/escuela_prueba"

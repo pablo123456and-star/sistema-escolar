@@ -7,6 +7,12 @@ import { api } from '@/nucleo/api'
 import type {
   Aranceles,
   Bandeja,
+  Bien,
+  EstadoStock,
+  Inventario,
+  MovimientoRegistrado,
+  Movimientos,
+  TipoMovimiento,
   Comunicado,
   ComunicadoNuevo,
   Destinos,
@@ -148,6 +154,85 @@ export function useConfirmarPagoEnLinea() {
   return useMutation({
     mutationFn: (id_sesion: string) =>
       api<Recibo>('/administracion/pagos/en-linea/confirmar', { metodo: 'POST', cuerpo: { id_sesion } }),
+    onSuccess: invalidar,
+  })
+}
+
+// ============================================================
+// CU26 - GESTIONAR INVENTARIO
+// ============================================================
+
+const INVENTARIO = ['administracion', 'inventario'] as const
+
+/** Tras registrar, corregir, eliminar o mover stock: se recargan la lista y los historiales. */
+function useInvalidarInventario() {
+  const cliente = useQueryClient()
+  return () => cliente.invalidateQueries({ queryKey: INVENTARIO })
+}
+
+/** Bienes con su stock y su estado (normal, bajo, sin_stock), con buscador y filtro por estado. */
+export function useInventario(buscar: string, estado: EstadoStock | '') {
+  return useQuery({
+    queryKey: [...INVENTARIO, 'lista', buscar, estado],
+    queryFn: () => api<Inventario>('/administracion/inventario', { params: { buscar, estado } }),
+    placeholderData: (anterior) => anterior,
+  })
+}
+
+/** Historial de entradas y salidas de un bien (null = no se pide). */
+export function useMovimientos(id_inventario: number | null) {
+  return useQuery({
+    queryKey: [...INVENTARIO, 'movimientos', id_inventario],
+    queryFn: () => api<Movimientos>(`/administracion/inventario/${id_inventario}/movimientos`),
+    enabled: id_inventario !== null,
+  })
+}
+
+type CuerpoBien = { nombre: string; stock_minimo: number; observacion: string | null }
+
+export function useRegistrarBien() {
+  const invalidar = useInvalidarInventario()
+  return useMutation({
+    mutationFn: (datos: CuerpoBien) => api<Bien>('/administracion/inventario', { metodo: 'POST', cuerpo: datos }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useActualizarBien() {
+  const invalidar = useInvalidarInventario()
+  return useMutation({
+    mutationFn: ({ id_inventario, ...datos }: CuerpoBien & { id_inventario: number }) =>
+      api<Bien>(`/administracion/inventario/${id_inventario}`, { metodo: 'PATCH', cuerpo: datos }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useEliminarBien() {
+  const invalidar = useInvalidarInventario()
+  return useMutation({
+    mutationFn: (id_inventario: number) =>
+      api<{ mensaje: string }>(`/administracion/inventario/${id_inventario}`, { metodo: 'DELETE' }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useRegistrarMovimiento() {
+  const invalidar = useInvalidarInventario()
+  return useMutation({
+    mutationFn: ({
+      id_inventario,
+      ...datos
+    }: {
+      id_inventario: number
+      tipo: TipoMovimiento
+      cantidad: number
+      motivo: string
+      destino: string | null
+    }) =>
+      api<MovimientoRegistrado>(`/administracion/inventario/${id_inventario}/movimientos`, {
+        metodo: 'POST',
+        cuerpo: datos,
+      }),
     onSuccess: invalidar,
   })
 }

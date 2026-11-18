@@ -7,8 +7,8 @@ Reglas de negocio comunes del paquete administracion (compartido).
 
 Las reglas propias de cada caso de uso están en el encabezado de su archivo en casos_uso/.
 
-Implementado por ahora: lo que usa el CU25 (cajero administrativo, quién ve los pagos) y el CU27
-(a quién puede publicar cada rol, quién ve el registro de lectura).
+Implementado: lo que usa el CU25 (cajero administrativo, quién ve los pagos), el CU26 (responsable
+del movimiento, estado del stock) y el CU27 (a quién puede publicar cada rol, quién ve el registro de lectura).
 """
 # ============================================================
 # CU25 - REGISTRAR PAGO DE MENSUALIDAD
@@ -37,6 +37,27 @@ async def pagos_visibles(sesion: AsyncSession, usuario: UsuarioActual, ci_estudi
     if usuario.rol == "tutor" and await repo.es_tutor_cu25(sesion, usuario.ci, ci_estudiante):
         return
     raise SinPermiso("Solo puede consultar los pagos propios o de sus estudiantes.")
+
+
+# ============================================================
+# CU26 - GESTIONAR INVENTARIO
+# ============================================================
+
+async def responsable_inventario(sesion: AsyncSession, usuario: UsuarioActual) -> str:
+    """CI del administrativo que registra el movimiento (el usuario conectado debe estar registrado
+    como administrativo: la FK de movimiento_inventario lo exige)."""
+    if usuario.rol != "administrador" or not await repo.es_administrativo_cu25(sesion, usuario.ci):
+        raise ErrorNegocio("Solo un administrativo registrado puede registrar entradas y salidas de inventario.")
+    return usuario.ci
+
+
+def estado_stock(cantidad: int, stock_minimo: int) -> str:
+    """'sin_stock' si no queda nada; 'bajo' si llegó al mínimo (un mínimo de 0 = sin alerta); si no, 'normal'."""
+    if cantidad == 0:
+        return "sin_stock"
+    if stock_minimo > 0 and cantidad <= stock_minimo:
+        return "bajo"
+    return "normal"
 
 
 # ============================================================

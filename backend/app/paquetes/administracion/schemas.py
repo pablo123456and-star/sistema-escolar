@@ -253,6 +253,112 @@ class MorososSalida(BaseModel):
 
 
 # ============================================================
+# CU26 - GESTIONAR INVENTARIO
+# ============================================================
+
+from datetime import datetime  # noqa: E402
+
+from pydantic import ConfigDict  # noqa: E402
+
+TipoMovimiento = Literal["entrada", "salida"]
+EstadoStock = Literal["normal", "bajo", "sin_stock"]
+
+
+class BienCrear(BaseModel):
+    """Bien nuevo: siempre empieza con cantidad 0 (el stock solo cambia con movimientos)."""
+
+    model_config = ConfigDict(extra="forbid")   # la cantidad no se envía: si llega, 422
+
+    nombre: str = Field(min_length=2, max_length=100)
+    stock_minimo: int = Field(default=0, ge=0, le=100000)
+    observacion: str | None = Field(default=None, max_length=500)
+
+    _limpiar = field_validator("nombre", "observacion", mode="before")(_limpiar_texto)
+
+
+class BienActualizar(BaseModel):
+    """Datos que se pueden corregir de un bien. La cantidad NUNCA: se corrige con un movimiento."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    nombre: str | None = Field(default=None, min_length=2, max_length=100)
+    stock_minimo: int | None = Field(default=None, ge=0, le=100000)
+    observacion: str | None = Field(default=None, max_length=500)   # null o "" la borra
+
+    _limpiar = field_validator("nombre", "observacion", mode="before")(_limpiar_texto)
+
+    @model_validator(mode="after")
+    def algo_que_cambiar(self):
+        if not self.model_fields_set:
+            raise ValueError("Indique el nombre, el stock mínimo o la observación.")
+        if "nombre" in self.model_fields_set and self.nombre is None:
+            raise ValueError("El nombre del bien no puede quedar vacío.")
+        if "stock_minimo" in self.model_fields_set and self.stock_minimo is None:
+            raise ValueError("Indique el stock mínimo (0 = sin alerta).")
+        return self
+
+
+class BienSalida(BaseModel):
+    id_inventario: int
+    nombre: str
+    cantidad: int
+    stock_minimo: int
+    estado: EstadoStock           # lo calcula el backend (politicas.estado_stock)
+    observacion: str | None
+    movimientos: int
+    ultimo_movimiento: datetime | None
+
+
+class InventarioSalida(BaseModel):
+    bienes: list[BienSalida]
+    total: int
+    sin_stock: int
+    stock_bajo: int
+
+
+class MovimientoCrear(BaseModel):
+    """Entrada o salida. Motivo obligatorio; la salida además indica a dónde va."""
+
+    tipo: TipoMovimiento
+    cantidad: int = Field(gt=0, le=100000)
+    motivo: str = Field(min_length=3, max_length=300)
+    destino: str | None = Field(default=None, max_length=100)
+
+    _limpiar = field_validator("motivo", "destino", mode="before")(_limpiar_texto)
+
+    @model_validator(mode="after")
+    def destino_de_salida(self):
+        if self.tipo == "salida" and not self.destino:
+            raise ValueError("Indique el destino de la salida (a dónde o a quién se entrega).")
+        if self.tipo == "entrada":
+            self.destino = None
+        return self
+
+
+class MovimientoSalida(BaseModel):
+    id_movimiento: int
+    fecha: datetime
+    tipo: TipoMovimiento
+    cantidad: int
+    motivo: str | None
+    destino: str | None
+    ci_responsable: str
+    responsable: str
+    saldo: int                    # stock del bien después de este movimiento
+
+
+class MovimientosSalida(BaseModel):
+    bien: BienSalida
+    movimientos: list[MovimientoSalida]   # del más reciente al más antiguo
+
+
+class MovimientoRegistradoSalida(BaseModel):
+    bien: BienSalida              # con el stock ya actualizado
+    movimiento: MovimientoSalida
+    aviso: str | None             # "stock bajo" o "sin stock" tras una salida
+
+
+# ============================================================
 # CU27 - GESTIONAR COMUNICADOS Y CITACIONES
 # ============================================================
 
