@@ -1,4 +1,5 @@
 /** Rutas del paquete personas: una por caso de uso (roles según la matriz de permisos del CU03). */
+/*frontend/src/paquetes/personas/rutas.tsx */
 import type { ReactNode } from 'react'
 import type { RouteObject } from 'react-router'
 import RutaProtegida from '@/nucleo/auth/RutaProtegida'

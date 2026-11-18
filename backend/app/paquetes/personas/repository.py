@@ -1,4 +1,5 @@
 """
+backend/app/paquetes/personas/repository.py
 Acceso a la base de datos del paquete personas (compartido).
 
 Consultas y escrituras con SQLAlchemy sobre las tablas de models.py.
@@ -224,3 +225,41 @@ async def asignaciones_docente(sesion: AsyncSession, ci: str, id_gestion: int):
             {"ci": ci, "g": id_gestion},
         )
     ).all()
+
+# cu09
+
+async def consultar_relacionados(sesion: AsyncSession, ci: str, tipo: str = "todos"):
+    """
+    Consulta los vínculos de una persona usando SQL puro.
+    """
+    if tipo == "estudiante":
+        # Buscar los tutores de este estudiante
+        query = """
+            SELECT
+                te.ci_tutor_tutorestudiante AS ci_relacionado,
+                p.nombre_persona || ' ' || p.apellidos AS nombre_completo,
+                te.parentesco,
+                te.es_principal,
+                te.es_responsable_pago
+            FROM tutor_estudiante te
+            JOIN persona p ON p.ci = te.ci_tutor_tutorestudiante
+            WHERE te.ci_estudiante_tutorestudiante = :ci
+        """
+    elif tipo == "tutor":
+        # Buscar los estudiantes de este tutor
+        query = """
+            SELECT
+                te.ci_estudiante_tutorestudiante AS ci_relacionado,
+                p.nombre_persona || ' ' || p.apellidos AS nombre_completo,
+                te.parentesco,
+                te.es_principal,
+                te.es_responsable_pago
+            FROM tutor_estudiante te
+            JOIN persona p ON p.ci = te.ci_estudiante_tutorestudiante
+            WHERE te.ci_tutor_tutorestudiante = :ci
+        """
+    else:
+        return []
+        
+    resultado = await sesion.execute(text(query), {"ci": ci})
+    return resultado.mappings().all()

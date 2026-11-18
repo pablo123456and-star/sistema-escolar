@@ -1,7 +1,5 @@
 # Entorno virtual y variables de entorno
 .venv/
-.env
-
 # Python
 __pycache__/
 *.py[cod]
@@ -12,3 +10,5 @@ htmlcov/
 # Editores
 .vscode/
 .idea/
+
+.env

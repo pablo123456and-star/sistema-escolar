@@ -1,3 +1,4 @@
+/*frontend/src/App.tsx */
 import { createBrowserRouter, Navigate, Outlet, RouterProvider } from 'react-router'
 import ProveedorSesion from '@/nucleo/auth/ProveedorSesion'
 import RutaProtegida from '@/nucleo/auth/RutaProtegida'

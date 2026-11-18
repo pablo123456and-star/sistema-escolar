@@ -1,4 +1,5 @@
 """
+backend/app/paquetes/personas/router.py
 Endpoints del paquete personas: /api/v1/personas/...
 
 Cada endpoint llama a su caso de uso en casos_uso/.
@@ -13,6 +14,7 @@ from app.nucleo.esquemas import NumeroPagina, Pagina, TamanoPagina
 from app.paquetes.personas import repository as repo
 from app.paquetes.personas.casos_uso import cu06_gestionar_estudiante as cu06
 from app.paquetes.personas.casos_uso import cu08_registrar_asociar_tutor as cu08
+from app.paquetes.personas.casos_uso import cu09_consultar_relacionados as cu09 # benjamin
 from app.paquetes.personas.casos_uso import cu10_registrar_docente as cu10
 from app.paquetes.personas.schemas import (
     PATRON_CI, BajaEntrada, EstudianteActualizar, EstudianteCrear, EstudianteDetalleSalida, EstudianteSalida,
@@ -127,6 +129,12 @@ async def actualizar_vinculo(datos: VinculoActualizar, _: Administrador, sesion:
 async def desvincular(_: Administrador, sesion: Sesion, ci: CiRuta, ci_estudiante: CiRuta):
     await cu08.desvincular(sesion, ci, ci_estudiante)
 
+# ---- CU09: Consultar relacionados ------------------------------------------------
+@router.get("/relacionados/{ci}", summary="CU09 - Consultar tutores o estudiantes relacionados")
+async def consultar_relacionados(
+    sesion: Sesion, ci: CiRuta, tipo: Literal["tutor", "estudiante", "todos"] = "todos"
+):
+    return await cu09.consultar(sesion, ci, tipo)
 
 # ---- CU10: docentes ------------------------------------------------------------------
 @router.get("/docentes", response_model=Pagina[DocenteSalida], summary="CU10 - Listar docentes")

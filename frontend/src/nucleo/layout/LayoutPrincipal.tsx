@@ -3,6 +3,7 @@
  * escudo, encabezado con el nombre de la unidad educativa, avisos y el menú del usuario
  * (Mi perfil, Cerrar sesión con confirmación). El menú se filtra por rol: el
  * administrador ve los módulos de gestión; docente, estudiante y padre/tutor, sus consultas.
+ * frontend/src/nucleo/layout/LayoutPrincipal.tsx
  */
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
@@ -67,6 +68,9 @@ const MENU: ItemMenu[] = [
   { ruta: '/seguridad/bitacora', texto: 'Bitácora', icono: ScrollTextIcon, roles: ['administrador'] },
   { ruta: '/personas/estudiantes', texto: 'Estudiantes', icono: GraduationCapIcon, roles: ['administrador'] },
   { ruta: '/personas/tutores', texto: 'Padres y tutores', icono: UsersRoundIcon, roles: ['administrador'] },
+  
+    // CU09 - Consultar relacionados (Administrador)
+  { ruta: '/personas/cu09', texto: 'Consultar relacionados', icono: UsersRoundIcon, roles: ['administrador'] },
   // CU10 - Registrar docente
   { ruta: '/personas/docentes', texto: 'Docentes', icono: PresentationIcon, roles: ['administrador'] },
   // CU12 - Gestionar niveles educativos y cursos
