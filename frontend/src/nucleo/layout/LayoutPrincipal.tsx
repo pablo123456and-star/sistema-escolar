@@ -26,6 +26,7 @@ import {
   MegaphoneIcon,
   MenuIcon,
   NotebookPenIcon,
+  PackageIcon,
   PresentationIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
@@ -114,6 +115,7 @@ const MENU: ItemMenu[] = [
   { ruta: '/academico/cu17', texto: 'Inscripciones', icono: HistoryIcon, roles: ['tutor'] },
   // Comunes a varios roles
   { ruta: '/administracion/pagos', texto: 'Pagos', icono: WalletIcon, roles: ['administrador', 'estudiante', 'tutor'] },
+  { ruta: '/administracion/inventario', texto: 'Inventario', icono: PackageIcon, roles: ['administrador'] },
   // Reportes estáticos y dinámico (PDF y Excel)
   { ruta: '/reportes', texto: 'Reportes', icono: FileSpreadsheetIcon, roles: ['administrador'] },
   { ruta: '/administracion/cu27', texto: 'Comunicados', icono: MegaphoneIcon, roles: ['administrador', 'profesor', 'estudiante', 'tutor'] },

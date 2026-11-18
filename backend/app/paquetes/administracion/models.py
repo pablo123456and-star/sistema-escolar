@@ -4,8 +4,8 @@ Modelos SQLAlchemy (ORM) del paquete administracion (compartido).
 Tablas (lectura y escritura): arancel, beca, pago_mensualidad, inventario, movimiento_inventario, comunicado, comunicado_lectura.
 Vistas (solo lectura): v_estado_pagos.
 
-Implementado por ahora: arancel, beca y pago_mensualidad (CU25); comunicado y comunicado_lectura (CU27).
-Inventario se agrega con el CU26.
+Implementado: arancel, beca y pago_mensualidad (CU25); inventario y movimiento_inventario (CU26);
+comunicado y comunicado_lectura (CU27).
 """
 # ============================================================
 # CU25 - REGISTRAR PAGO DE MENSUALIDAD
@@ -66,6 +66,41 @@ class PagoMensualidad(Base):
     id_gestion_pago: Mapped[int] = mapped_column(ForeignKey("gestion.id_gestion"))
     creado_en: Mapped[datetime] = mapped_column(server_default="now()")
     actualizado_en: Mapped[datetime] = mapped_column(server_default="now()")
+
+
+# ============================================================
+# CU26 - GESTIONAR INVENTARIO
+# ============================================================
+
+
+class Inventario(Base):
+    """Bien del colegio. cantidad_inventario la mantiene el trigger fn_tg_aplicar_movimiento:
+    el backend nunca la edita directamente (solo registra movimientos)."""
+
+    __tablename__ = "inventario"
+
+    id_inventario: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre_inventario: Mapped[str] = mapped_column(String(100))
+    cantidad_inventario: Mapped[int] = mapped_column(Integer, server_default="0")
+    stock_minimo: Mapped[int] = mapped_column(Integer, server_default="0")   # script 11
+    observacion_inventario: Mapped[str | None] = mapped_column(Text)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
+    actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
+
+
+class MovimientoInventario(Base):
+    """Entrada o salida de un bien. No se edita ni se borra: se corrige con un movimiento contrario."""
+
+    __tablename__ = "movimiento_inventario"
+
+    id_movimiento: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fecha_acceso_inventario: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
+    tipo_accion_inventario: Mapped[str] = mapped_column(String(20))
+    cantidad_movimiento: Mapped[int]
+    motivo_movimiento: Mapped[str | None] = mapped_column(Text)
+    destino_movimiento: Mapped[str | None] = mapped_column(String(100))
+    ci_administrativo_movimiento: Mapped[str] = mapped_column(ForeignKey("administrativo.ci_administrativo"))
+    id_inventario_movimiento: Mapped[int] = mapped_column(ForeignKey("inventario.id_inventario"))
 
 
 # ============================================================

@@ -139,6 +139,72 @@ export type Moroso = {
 export type Morosos = { total_deuda: number; morosos: Moroso[] }
 
 // ============================================================
+// CU26 - GESTIONAR INVENTARIO
+// ============================================================
+
+export type TipoMovimiento = 'entrada' | 'salida'
+/** Lo calcula el backend: 'bajo' = llegó a su stock mínimo; 'sin_stock' = cantidad 0. */
+export type EstadoStock = 'normal' | 'bajo' | 'sin_stock'
+
+export type Bien = {
+  id_inventario: number
+  nombre: string
+  cantidad: number
+  stock_minimo: number
+  estado: EstadoStock
+  observacion: string | null
+  movimientos: number
+  ultimo_movimiento: string | null
+}
+
+export type Inventario = { bienes: Bien[]; total: number; sin_stock: number; stock_bajo: number }
+
+export type Movimiento = {
+  id_movimiento: number
+  fecha: string
+  tipo: TipoMovimiento
+  cantidad: number
+  motivo: string | null
+  destino: string | null
+  ci_responsable: string
+  responsable: string
+  saldo: number
+}
+
+export type Movimientos = { bien: Bien; movimientos: Movimiento[] }
+export type MovimientoRegistrado = { bien: Bien; movimiento: Movimiento; aviso: string | null }
+
+// Un número entero escrito en un input (llega como texto)
+const entero = (minimo: number, mensaje: string) =>
+  z
+    .string()
+    .trim()
+    .regex(/^\d+$/, 'Escriba un número entero')
+    .refine((v) => Number(v) >= minimo, mensaje)
+    .refine((v) => Number(v) <= 100000, 'Máximo 100000')
+
+/** Registrar o corregir un bien. La cantidad no está: solo cambia con entradas y salidas. */
+export const esquemaBien = z.object({
+  nombre: z.string().trim().min(2, 'Mínimo 2 caracteres').max(100, 'Máximo 100 caracteres'),
+  stock_minimo: entero(0, 'No puede ser negativo'),
+  observacion: z.string().trim().max(500, 'Máximo 500 caracteres'),
+})
+export type DatosBien = z.infer<typeof esquemaBien>
+
+export const esquemaMovimiento = z
+  .object({
+    tipo: z.enum(['entrada', 'salida']),
+    cantidad: entero(1, 'Debe ser mayor a 0'),
+    motivo: z.string().trim().min(3, 'Indique el motivo (mínimo 3 caracteres)').max(300, 'Máximo 300 caracteres'),
+    destino: z.string().trim().max(100, 'Máximo 100 caracteres'),
+  })
+  .superRefine((d, ctx) => {
+    if (d.tipo === 'salida' && !d.destino)
+      ctx.addIssue({ code: 'custom', path: ['destino'], message: 'Indique a dónde o a quién se entrega' })
+  })
+export type DatosMovimiento = z.infer<typeof esquemaMovimiento>
+
+// ============================================================
 // CU27 - GESTIONAR COMUNICADOS Y CITACIONES
 // ============================================================
 

@@ -240,6 +240,78 @@ async def morosos_cu25(sesion: AsyncSession):
 
 
 # ============================================================
+# CU26 - GESTIONAR INVENTARIO
+# ============================================================
+
+from app.paquetes.administracion.models import Inventario  # noqa: E402
+
+_BIENES = """SELECT i.id_inventario, i.nombre_inventario AS nombre, i.cantidad_inventario AS cantidad,
+                    i.stock_minimo, i.observacion_inventario AS observacion,
+                    (SELECT count(*) FROM movimiento_inventario m
+                      WHERE m.id_inventario_movimiento = i.id_inventario) AS movimientos,
+                    (SELECT max(m.fecha_acceso_inventario) FROM movimiento_inventario m
+                      WHERE m.id_inventario_movimiento = i.id_inventario) AS ultimo_movimiento
+               FROM inventario i"""
+
+
+async def bienes_cu26(sesion: AsyncSession, buscar: str | None = None, id_inventario: int | None = None):
+    """Bienes con su stock, cuántos movimientos tienen y la fecha del último (por nombre)."""
+    filtros, params = [], {}
+    if buscar:
+        filtros.append("(i.nombre_inventario ILIKE :b OR i.observacion_inventario ILIKE :b)")
+        params["b"] = f"%{buscar}%"
+    if id_inventario is not None:
+        filtros.append("i.id_inventario = :id")
+        params["id"] = id_inventario
+    donde = ("WHERE " + " AND ".join(filtros)) if filtros else ""
+    return (await sesion.execute(text(f"{_BIENES} {donde} ORDER BY i.nombre_inventario"), params)).all()
+
+
+async def bien_bloqueado_cu26(sesion: AsyncSession, id_inventario: int) -> Inventario | None:
+    """El bien con su fila bloqueada (FOR UPDATE) hasta el fin de la transacción:
+    dos salidas al mismo tiempo no pueden sacar el mismo stock."""
+    return await sesion.scalar(
+        select(Inventario).where(Inventario.id_inventario == id_inventario).with_for_update()
+    )
+
+
+async def nombre_en_uso_cu26(sesion: AsyncSession, nombre: str, excluir_id: int | None = None) -> bool:
+    """Ya hay otro bien con ese nombre (sin distinguir mayúsculas ni minúsculas)."""
+    return bool(
+        await sesion.scalar(
+            text("""SELECT 1 FROM inventario
+                     WHERE lower(nombre_inventario) = lower(:n)
+                       AND (CAST(:excluir AS integer) IS NULL OR id_inventario <> :excluir)"""),
+            {"n": nombre, "excluir": excluir_id},
+        )
+    )
+
+
+async def movimientos_cu26(sesion: AsyncSession, id_inventario: int, id_movimiento: int | None = None):
+    """Movimientos del bien (o uno solo) con el responsable y el saldo después de cada uno,
+    del más reciente al más antiguo."""
+    return (
+        await sesion.execute(
+            text("""SELECT * FROM (
+                        SELECT m.id_movimiento, m.fecha_acceso_inventario AS fecha,
+                               m.tipo_accion_inventario AS tipo, m.cantidad_movimiento AS cantidad,
+                               m.motivo_movimiento AS motivo, m.destino_movimiento AS destino,
+                               m.ci_administrativo_movimiento AS ci_responsable,
+                               p.nombre_persona || ' ' || p.apellidos AS responsable,
+                               sum(CASE WHEN m.tipo_accion_inventario = 'entrada' THEN m.cantidad_movimiento
+                                        ELSE -m.cantidad_movimiento END)
+                                   OVER (ORDER BY m.fecha_acceso_inventario, m.id_movimiento)::int AS saldo
+                          FROM movimiento_inventario m
+                          JOIN persona p ON p.ci = m.ci_administrativo_movimiento
+                         WHERE m.id_inventario_movimiento = :id) x
+                     WHERE CAST(:mov AS integer) IS NULL OR x.id_movimiento = :mov
+                     ORDER BY x.fecha DESC, x.id_movimiento DESC"""),
+            {"id": id_inventario, "mov": id_movimiento},
+        )
+    ).all()
+
+
+# ============================================================
 # CU27 - GESTIONAR COMUNICADOS Y CITACIONES
 # ============================================================
 

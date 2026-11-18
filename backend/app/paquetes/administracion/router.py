@@ -11,9 +11,6 @@ from app.nucleo.dependencias import Administrador, Sesion, UsuarioActual, requie
 
 router = APIRouter(prefix="/administracion", tags=["administracion"])
 
-# PENDIENTE: endpoints de
-#   cu26_gestionar_inventario
-
 # ============================================================
 # CU25 - REGISTRAR PAGO DE MENSUALIDAD
 # ============================================================
@@ -130,12 +127,59 @@ async def morosos(_: Administrador, sesion: Sesion):
 
 
 # ============================================================
-# CU27 - GESTIONAR COMUNICADOS Y CITACIONES
+# CU26 - GESTIONAR INVENTARIO
 # ============================================================
+# Los movimientos no tienen PUT/PATCH/DELETE a propósito: se corrigen con un movimiento contrario.
 
 from typing import Literal  # noqa: E402
 
 from app.nucleo.esquemas import Mensaje  # noqa: E402
+from app.paquetes.administracion.casos_uso import cu26_gestionar_inventario as cu26  # noqa: E402
+from app.paquetes.administracion.schemas import (  # noqa: E402
+    BienActualizar, BienCrear, BienSalida, EstadoStock, InventarioSalida, MovimientoCrear,
+    MovimientoRegistradoSalida, MovimientosSalida,
+)
+
+
+@router.get("/inventario", response_model=InventarioSalida,
+            summary="CU26 - Bienes del inventario con su stock (filtro: sin_stock, bajo, normal)")
+async def inventario(_: Administrador, sesion: Sesion, buscar: str | None = None, estado: EstadoStock | None = None):
+    return await cu26.listar(sesion, buscar, estado)
+
+
+@router.post("/inventario", response_model=BienSalida, status_code=status.HTTP_201_CREATED,
+             summary="CU26 - Registrar un bien (empieza con cantidad 0)")
+async def registrar_bien(datos: BienCrear, _: Administrador, sesion: Sesion):
+    return await cu26.registrar(sesion, datos)
+
+
+@router.patch("/inventario/{id_inventario}", response_model=BienSalida,
+              summary="CU26 - Corregir nombre, stock mínimo u observación (nunca la cantidad)")
+async def actualizar_bien(datos: BienActualizar, _: Administrador, sesion: Sesion, id_inventario: int):
+    return await cu26.actualizar(sesion, id_inventario, datos)
+
+
+@router.delete("/inventario/{id_inventario}", response_model=Mensaje,
+               summary="CU26 - Eliminar un bien sin movimientos (registrado por error)")
+async def eliminar_bien(_: Administrador, sesion: Sesion, id_inventario: int):
+    return await cu26.eliminar(sesion, id_inventario)
+
+
+@router.get("/inventario/{id_inventario}/movimientos", response_model=MovimientosSalida,
+            summary="CU26 - Historial de entradas y salidas de un bien")
+async def movimientos_bien(_: Administrador, sesion: Sesion, id_inventario: int):
+    return await cu26.movimientos(sesion, id_inventario)
+
+
+@router.post("/inventario/{id_inventario}/movimientos", response_model=MovimientoRegistradoSalida,
+             status_code=status.HTTP_201_CREATED, summary="CU26 - Registrar una entrada o una salida de stock")
+async def registrar_movimiento(datos: MovimientoCrear, usuario: Administrador, sesion: Sesion, id_inventario: int):
+    return await cu26.registrar_movimiento(sesion, usuario, id_inventario, datos)
+
+
+# ============================================================
+# CU27 - GESTIONAR COMUNICADOS Y CITACIONES
+# ============================================================
 from app.paquetes.administracion.casos_uso import cu27_gestionar_comunicados as cu27  # noqa: E402
 from app.paquetes.administracion.schemas import (  # noqa: E402
     BandejaSalida, ComunicadoCrear, ComunicadoSalida, DestinosSalida, LecturasSalida,

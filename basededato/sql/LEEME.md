@@ -71,7 +71,7 @@ Antes estas reglas eran triggers o procedimientos. Ahora cada una va en el `poli
 | Asistencia: fecha no futura y dentro de la gestión; estudiante del curso | CU21 (evaluacion) |
 | Nota: estudiante inscrito con esa materia, periodo abierto, puntaje ≤ máximo | CU23 (evaluacion) |
 | Pago: cajero administrativo, recibo correlativo, fecha no futura, no cobrar dos veces | CU25 (administracion) |
-| Los movimientos de inventario no se editan (se corrigen con otro movimiento) | CU26 (administracion) |
+| Inventario: el stock solo cambia con movimientos (no se editan, se corrigen con otro), salida ≤ stock, alerta de stock bajo | CU26 (administracion) |
 | Quién publica comunicados a quién | CU27 (administracion) |
 
 ---
@@ -90,6 +90,9 @@ Los scripts se ejecutan **en este orden**:
 | 6 | `06_seguridad.sql` |
 | 7 | `07_datos_iniciales.sql` |
 | 8 | `08_datos_prueba.sql` (opcional, solo para desarrollo) |
+| 9 | `09_seguridad_bloqueos_recuperacion.sql` (bloqueo temporal y recuperación de contraseña) |
+| 10 | `10_pago_en_linea.sql` (administrativo "Pagos en línea" del CU25) |
+| 11 | `11_inventario_stock_minimo.sql` (stock mínimo de cada bien, CU26) |
 
 ### En tu PostgreSQL local (para desarrollar)
 
