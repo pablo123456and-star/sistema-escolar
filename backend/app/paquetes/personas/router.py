@@ -5,13 +5,14 @@ Cada endpoint llama a su caso de uso en casos_uso/.
 """
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Path, status
+from fastapi import APIRouter, Depends, Path, status
 
-from app.nucleo.dependencias import Administrador, Sesion
+from app.nucleo.dependencias import Administrador, Sesion, UsuarioActual, requiere_rol
 from app.nucleo.errores import NoEncontrado
 from app.nucleo.esquemas import NumeroPagina, Pagina, TamanoPagina
 from app.paquetes.personas import repository as repo
 from app.paquetes.personas.casos_uso import cu06_gestionar_estudiante as cu06
+from app.paquetes.personas.casos_uso import cu07_registrar_antecedentes_seguimiento as cu07
 from app.paquetes.personas.casos_uso import cu08_registrar_asociar_tutor as cu08
 from app.paquetes.personas.casos_uso import cu10_registrar_docente as cu10
 from app.paquetes.personas.schemas import (
@@ -19,12 +20,15 @@ from app.paquetes.personas.schemas import (
     OpcionesEstudianteSalida, PersonaBuscadaSalida, PersonaSalida, TutorActualizar, TutorCrear, TutorDetalleSalida,
     TutorSalida, VinculoActualizar, VinculoConEstudianteEntrada, VinculoEntrada, VinculoSalida,
     DocenteActualizar, DocenteCrear, DocenteDetalleSalida, DocenteSalida,
+    AntecedentesActualizar, EstudianteSeguimientoSalida, FichaSeguimientoSalida, SeguimientoCrear, SeguimientoSalida,
 )
 
 router = APIRouter(prefix="/personas", tags=["personas"])
 
 CiRuta = Annotated[str, Path(pattern=PATRON_CI)]
 Estado = Literal["activo", "inactivo"]
+AdministradorOProfesor = Annotated[UsuarioActual, Depends(requiere_rol("administrador", "profesor"))]
+ConsultaSeguimiento = Annotated[UsuarioActual, Depends(requiere_rol("administrador", "profesor", "tutor"))]
 
 
 @router.get("/buscar/{ci}", response_model=PersonaBuscadaSalida,
@@ -81,6 +85,34 @@ async def baja_estudiante(datos: BajaEntrada, _: Administrador, sesion: Sesion, 
 @router.post("/estudiantes/{ci}/reactivar", response_model=EstudianteDetalleSalida, summary="CU06 - Reactivar")
 async def reactivar_estudiante(_: Administrador, sesion: Sesion, ci: CiRuta):
     return await cu06.reactivar(sesion, ci)
+
+
+# ---- CU07: antecedentes médicos y seguimiento ---------------------------------------
+@router.get("/seguimiento/estudiantes", response_model=Pagina[EstudianteSeguimientoSalida],
+            summary="CU07 - Estudiantes que el usuario puede consultar (profesor: los suyos; tutor: sus hijos)")
+async def listar_estudiantes_seguimiento(
+    usuario: ConsultaSeguimiento, sesion: Sesion, q: str | None = None,
+    pagina: NumeroPagina = 1, tamano: TamanoPagina = 10,
+):
+    return await cu07.listar(sesion, usuario, q, pagina, tamano)
+
+
+@router.get("/seguimiento/estudiantes/{ci}", response_model=FichaSeguimientoSalida,
+            summary="CU07 - Antecedentes y seguimiento de un estudiante")
+async def ficha_seguimiento(usuario: ConsultaSeguimiento, sesion: Sesion, ci: CiRuta):
+    return await cu07.ficha(sesion, usuario, ci)
+
+
+@router.put("/seguimiento/estudiantes/{ci}/antecedentes", response_model=FichaSeguimientoSalida,
+            summary="CU07 - Registrar o modificar la observación médica (solo administrador)")
+async def actualizar_antecedentes(datos: AntecedentesActualizar, usuario: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu07.actualizar_antecedentes(sesion, usuario, ci, datos)
+
+
+@router.post("/seguimiento/estudiantes/{ci}/seguimientos", response_model=SeguimientoSalida,
+             status_code=status.HTTP_201_CREATED, summary="CU07 - Registrar una anotación de seguimiento")
+async def registrar_seguimiento(datos: SeguimientoCrear, usuario: AdministradorOProfesor, sesion: Sesion, ci: CiRuta):
+    return await cu07.registrar_seguimiento(sesion, usuario, ci, datos)
 
 
 # ---- CU08: tutores y vínculos ------------------------------------------------------
