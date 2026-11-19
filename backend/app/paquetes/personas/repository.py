@@ -224,3 +224,113 @@ async def asignaciones_docente(sesion: AsyncSession, ci: str, id_gestion: int):
             {"ci": ci, "g": id_gestion},
         )
     ).all()
+
+
+# ---- CU07: antecedentes médicos y seguimiento ---------------------------------------
+# Estudiantes que cada rol puede consultar en el CU07 (e = estudiante). Es la única
+# definición de la regla: la usan tanto la lista como la comprobación de un CI.
+#   - profesor: inscritos (activos) en un curso donde dicta alguna materia en la gestión :g
+#   - tutor: los estudiantes vinculados a él
+_VISIBLES_CU07 = {
+    "administrador": "TRUE",
+    "profesor": """EXISTS (SELECT 1
+                             FROM inscripcion i
+                             JOIN asignacion_profesor_clase a ON a.id_curso_asignacion = i.id_curso_inscripcion
+                                                             AND a.id_gestion_asignacion = i.id_gestion_inscripcion
+                            WHERE i.ci_estudiante_inscripcion = e.ci_estudiante
+                              AND i.estado_inscripcion = 'activa'
+                              AND i.id_gestion_inscripcion = :g
+                              AND a.ci_profesor_asignacion = :usuario)""",
+    "tutor": """EXISTS (SELECT 1 FROM tutor_estudiante te
+                         WHERE te.ci_estudiante_tutorestudiante = e.ci_estudiante
+                           AND te.ci_tutor_tutorestudiante = :usuario)""",
+}
+
+
+def _visibles_cu07(rol: str) -> str:
+    return _VISIBLES_CU07.get(rol, "FALSE")
+
+
+async def estudiante_visible_cu07(sesion: AsyncSession, rol: str, ci_usuario: str, id_gestion: int | None,
+                                  ci_estudiante: str) -> bool:
+    return bool(
+        await sesion.scalar(
+            text(f"SELECT EXISTS (SELECT 1 FROM estudiante e WHERE e.ci_estudiante = :ci AND {_visibles_cu07(rol)})"),
+            {"ci": ci_estudiante, "usuario": ci_usuario, "g": id_gestion},
+        )
+    )
+
+
+async def listar_estudiantes_cu07(sesion: AsyncSession, *, rol: str, ci_usuario: str, id_gestion: int | None,
+                                  q: str | None, pagina: int, tamano: int):
+    filtros, params = [_visibles_cu07(rol)], {"usuario": ci_usuario, "g": id_gestion}
+    if q:
+        filtros.append("(lower(p.nombre_persona || ' ' || p.apellidos) LIKE :q "
+                       "OR lower(p.apellidos || ' ' || p.nombre_persona) LIKE :q OR p.ci LIKE :q)")
+        params["q"] = _like(q)
+    donde = " AND ".join(filtros)
+    total = await sesion.scalar(
+        text(f"SELECT count(*) FROM estudiante e JOIN persona p ON p.ci = e.ci_estudiante WHERE {donde}"), params
+    )
+    filas = (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.nombre_persona, p.apellidos, p.sexo, p.estado_persona, ia.curso,
+                            coalesce(e.observacion_medica, '') <> '' AS tiene_observacion_medica,
+                            coalesce(s.cantidad, 0) AS cantidad_seguimientos, s.ultimo AS ultimo_seguimiento
+                       FROM estudiante e
+                       JOIN persona p ON p.ci = e.ci_estudiante
+                       LEFT JOIN ({_INSCRIPCION_ACTUAL}) ia ON ia.ci = e.ci_estudiante
+                                                           AND ia.estado_inscripcion = 'activa'
+                       LEFT JOIN (SELECT ci_estudiante_seguimiento AS ci, count(*) AS cantidad,
+                                         max(fecha_seguimiento) AS ultimo
+                                    FROM seguimiento_estudiante
+                                   GROUP BY ci_estudiante_seguimiento) s ON s.ci = e.ci_estudiante
+                      WHERE {donde}
+                      ORDER BY (p.estado_persona = 'activo') DESC, ia.curso NULLS LAST, p.apellidos, p.nombre_persona
+                      LIMIT :limite OFFSET :desde"""),
+            {**params, "limite": tamano, "desde": (pagina - 1) * tamano},
+        )
+    ).all()
+    return filas, total or 0
+
+
+async def ficha_cu07(sesion: AsyncSession, ci: str):
+    """Datos del estudiante para la ficha del CU07 (con su curso de la gestión abierta, si tiene)."""
+    return (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.expedido, p.nombre_persona, p.apellidos, p.sexo, p.fecha_nacimiento,
+                            p.estado_persona, e.rude, e.observacion_medica, e.antecedentes_academicos,
+                            ia.curso, ia.gestion
+                       FROM estudiante e
+                       JOIN persona p ON p.ci = e.ci_estudiante
+                       LEFT JOIN ({_INSCRIPCION_ACTUAL}) ia ON ia.ci = e.ci_estudiante
+                                                           AND ia.estado_inscripcion = 'activa'
+                      WHERE e.ci_estudiante = :ci"""),
+            {"ci": ci},
+        )
+    ).one_or_none()
+
+
+async def seguimientos_cu07(sesion: AsyncSession, ci_estudiante: str, id_seguimiento: int | None = None):
+    """Anotaciones del estudiante (o solo una), la más reciente primero, con el nombre y rol de quien la registró."""
+    filtro = "AND s.id_seguimiento = :id" if id_seguimiento is not None else ""
+    return (
+        await sesion.execute(
+            text(f"""SELECT s.id_seguimiento, s.fecha_seguimiento AS fecha, s.tipo_seguimiento AS tipo, s.gravedad,
+                           s.descripcion_seguimiento AS descripcion, s.accion_tomada, s.ci_registrado_por,
+                           pa.nombre_persona || ' ' || pa.apellidos AS registrado_por,
+                           r.nombre_rol AS rol_registrado_por
+                      FROM seguimiento_estudiante s
+                      JOIN persona pa ON pa.ci = s.ci_registrado_por
+                      LEFT JOIN usuario u ON u.ci_persona = s.ci_registrado_por
+                      LEFT JOIN rol r     ON r.id_rol = u.id_rol_usuario
+                     WHERE s.ci_estudiante_seguimiento = :ci {filtro}
+                     ORDER BY s.fecha_seguimiento DESC, s.id_seguimiento DESC"""),
+            {"ci": ci_estudiante, "id": id_seguimiento},
+        )
+    ).all()
+
+
+async def hoy(sesion: AsyncSession):
+    """Fecha de hoy según la BD (la sesión usa la hora de Bolivia)."""
+    return await sesion.scalar(text("SELECT current_date"))

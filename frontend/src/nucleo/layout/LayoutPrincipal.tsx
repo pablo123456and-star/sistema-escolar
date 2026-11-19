@@ -67,6 +67,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/seguridad/bitacora', texto: 'Bitácora', icono: ScrollTextIcon, roles: ['administrador'] },
   { ruta: '/personas/estudiantes', texto: 'Estudiantes', icono: GraduationCapIcon, roles: ['administrador'] },
   { ruta: '/personas/tutores', texto: 'Padres y tutores', icono: UsersRoundIcon, roles: ['administrador'] },
+  // CU07 - Antecedentes médicos y seguimiento (el profesor y el tutor lo tienen en su bloque)
+  { ruta: '/personas/cu07', texto: 'Seguimiento', icono: HeartPulseIcon, roles: ['administrador'] },
   // CU10 - Registrar docente
   { ruta: '/personas/docentes', texto: 'Docentes', icono: PresentationIcon, roles: ['administrador'] },
   // CU12 - Gestionar niveles educativos y cursos
@@ -113,6 +115,7 @@ const MENU: ItemMenu[] = [
   { ruta: '/evaluacion/boletines', texto: 'Boletín', icono: FileTextIcon, roles: ['tutor'] },
   { ruta: '/evaluacion/historial-asistencia', texto: 'Asistencia', icono: CalendarCheckIcon, roles: ['tutor'] },
   { ruta: '/academico/cu17', texto: 'Inscripciones', icono: HistoryIcon, roles: ['tutor'] },
+  { ruta: '/personas/cu07', texto: 'Seguimiento', icono: HeartPulseIcon, roles: ['tutor'] },
   // Comunes a varios roles
   { ruta: '/administracion/pagos', texto: 'Pagos', icono: WalletIcon, roles: ['administrador', 'estudiante', 'tutor'] },
   { ruta: '/administracion/inventario', texto: 'Inventario', icono: PackageIcon, roles: ['administrador'] },

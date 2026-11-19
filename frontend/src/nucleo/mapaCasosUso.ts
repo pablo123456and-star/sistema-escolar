@@ -1,6 +1,6 @@
 /**
  * Los 6 paquetes del sistema y sus casos de uso (mismo orden que el backend).
- * Ciclo 1 implementado: CU01-CU04 (seguridad), CU06 y CU08 (personas).
+ * Pendientes: CU05, CU09 y CU11 (personas).
  */
 export type CasoUso = { codigo: string; nombre: string; ruta: string }
 export type Paquete = { paquete: string; titulo: string; casos: CasoUso[] }
