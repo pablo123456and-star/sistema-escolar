@@ -42,7 +42,7 @@ MATRIZ_PERMISOS = [
     ("seguridad", "CU04", "Consultar bitácora de actividades", (A,)),
     ("personas", "CU05", "Registrar y actualizar datos de persona", (A,)),
     ("personas", "CU06", "Registrar y gestionar estudiante", (A,)),
-    ("personas", "CU07", "Registrar antecedentes médicos y seguimiento", (A, P)),
+    ("personas", "CU07", "Registrar antecedentes médicos y seguimiento", (A, P, T)),
     ("personas", "CU08", "Registrar tutor y asociarlo a estudiante", (A,)),
     ("personas", "CU09", "Consultar estudiantes/tutores relacionados", (A, P, E, T)),
     ("personas", "CU10", "Registrar docente", (A,)),

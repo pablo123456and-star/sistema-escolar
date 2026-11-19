@@ -2,7 +2,7 @@
 Modelos SQLAlchemy (ORM) del paquete personas (compartido).
 
 Tablas (lectura y escritura): persona, estudiante, tutor, tutor_estudiante,
-profesor, administrativo. (seguimiento_estudiante se agrega con el CU07.)
+profesor, administrativo, seguimiento_estudiante (CU07).
 """
 from datetime import date, datetime
 
@@ -73,3 +73,19 @@ class Administrativo(Base):
 
     ci_administrativo: Mapped[str] = mapped_column(ForeignKey("persona.ci"), primary_key=True)
     cargo: Mapped[str | None] = mapped_column(String(50))
+
+
+class SeguimientoEstudiante(Base):
+    """CU07: anotación de seguimiento (conducta, académico, salud, mérito u otro) de un estudiante."""
+
+    __tablename__ = "seguimiento_estudiante"
+
+    id_seguimiento: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fecha_seguimiento: Mapped[date] = mapped_column(server_default="CURRENT_DATE")
+    tipo_seguimiento: Mapped[str] = mapped_column(String(20))
+    gravedad: Mapped[str | None] = mapped_column(String(20))
+    descripcion_seguimiento: Mapped[str] = mapped_column(Text)
+    accion_tomada: Mapped[str | None] = mapped_column(Text)
+    ci_estudiante_seguimiento: Mapped[str] = mapped_column(ForeignKey("estudiante.ci_estudiante"))
+    ci_registrado_por: Mapped[str] = mapped_column(ForeignKey("persona.ci"))
+    creado_en: Mapped[datetime] = mapped_column(server_default="now()")

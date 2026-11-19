@@ -226,6 +226,7 @@ async def asignaciones_docente(sesion: AsyncSession, ci: str, id_gestion: int):
         )
     ).all()
 
+
 # cu09
 
 async def consultar_relacionados(sesion: AsyncSession, ci: str, tipo: str = "todos"):
@@ -263,3 +264,167 @@ async def consultar_relacionados(sesion: AsyncSession, ci: str, tipo: str = "tod
         
     resultado = await sesion.execute(text(query), {"ci": ci})
     return resultado.mappings().all()
+
+
+# ---- CU07: antecedentes médicos y seguimiento ---------------------------------------
+# Estudiantes que cada rol puede consultar en el CU07 (e = estudiante). Es la única
+# definición de la regla: la usan tanto la lista como la comprobación de un CI.
+#   - profesor: inscritos (activos) en un curso donde dicta alguna materia en la gestión :g
+#   - tutor: los estudiantes vinculados a él
+_VISIBLES_CU07 = {
+    "administrador": "TRUE",
+    "profesor": """EXISTS (SELECT 1
+                             FROM inscripcion i
+                             JOIN asignacion_profesor_clase a ON a.id_curso_asignacion = i.id_curso_inscripcion
+                                                             AND a.id_gestion_asignacion = i.id_gestion_inscripcion
+                            WHERE i.ci_estudiante_inscripcion = e.ci_estudiante
+                              AND i.estado_inscripcion = 'activa'
+                              AND i.id_gestion_inscripcion = :g
+                              AND a.ci_profesor_asignacion = :usuario)""",
+    "tutor": """EXISTS (SELECT 1 FROM tutor_estudiante te
+                         WHERE te.ci_estudiante_tutorestudiante = e.ci_estudiante
+                           AND te.ci_tutor_tutorestudiante = :usuario)""",
+}
+
+
+def _visibles_cu07(rol: str) -> str:
+    return _VISIBLES_CU07.get(rol, "FALSE")
+
+
+async def estudiante_visible_cu07(sesion: AsyncSession, rol: str, ci_usuario: str, id_gestion: int | None,
+                                  ci_estudiante: str) -> bool:
+    return bool(
+        await sesion.scalar(
+            text(f"SELECT EXISTS (SELECT 1 FROM estudiante e WHERE e.ci_estudiante = :ci AND {_visibles_cu07(rol)})"),
+            {"ci": ci_estudiante, "usuario": ci_usuario, "g": id_gestion},
+        )
+    )
+
+
+async def listar_estudiantes_cu07(sesion: AsyncSession, *, rol: str, ci_usuario: str, id_gestion: int | None,
+                                  q: str | None, pagina: int, tamano: int):
+    filtros, params = [_visibles_cu07(rol)], {"usuario": ci_usuario, "g": id_gestion}
+    if q:
+        filtros.append("(lower(p.nombre_persona || ' ' || p.apellidos) LIKE :q "
+                       "OR lower(p.apellidos || ' ' || p.nombre_persona) LIKE :q OR p.ci LIKE :q)")
+        params["q"] = _like(q)
+    donde = " AND ".join(filtros)
+    total = await sesion.scalar(
+        text(f"SELECT count(*) FROM estudiante e JOIN persona p ON p.ci = e.ci_estudiante WHERE {donde}"), params
+    )
+    filas = (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.nombre_persona, p.apellidos, p.sexo, p.estado_persona, ia.curso,
+                            coalesce(e.observacion_medica, '') <> '' AS tiene_observacion_medica,
+                            coalesce(s.cantidad, 0) AS cantidad_seguimientos, s.ultimo AS ultimo_seguimiento
+                       FROM estudiante e
+                       JOIN persona p ON p.ci = e.ci_estudiante
+                       LEFT JOIN ({_INSCRIPCION_ACTUAL}) ia ON ia.ci = e.ci_estudiante
+                                                           AND ia.estado_inscripcion = 'activa'
+                       LEFT JOIN (SELECT ci_estudiante_seguimiento AS ci, count(*) AS cantidad,
+                                         max(fecha_seguimiento) AS ultimo
+                                    FROM seguimiento_estudiante
+                                   GROUP BY ci_estudiante_seguimiento) s ON s.ci = e.ci_estudiante
+                      WHERE {donde}
+                      ORDER BY (p.estado_persona = 'activo') DESC, ia.curso NULLS LAST, p.apellidos, p.nombre_persona
+                      LIMIT :limite OFFSET :desde"""),
+            {**params, "limite": tamano, "desde": (pagina - 1) * tamano},
+        )
+    ).all()
+    return filas, total or 0
+
+
+async def ficha_cu07(sesion: AsyncSession, ci: str):
+    """Datos del estudiante para la ficha del CU07 (con su curso de la gestión abierta, si tiene)."""
+    return (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.expedido, p.nombre_persona, p.apellidos, p.sexo, p.fecha_nacimiento,
+                            p.estado_persona, e.rude, e.observacion_medica, e.antecedentes_academicos,
+                            ia.curso, ia.gestion
+                       FROM estudiante e
+                       JOIN persona p ON p.ci = e.ci_estudiante
+                       LEFT JOIN ({_INSCRIPCION_ACTUAL}) ia ON ia.ci = e.ci_estudiante
+                                                           AND ia.estado_inscripcion = 'activa'
+                      WHERE e.ci_estudiante = :ci"""),
+            {"ci": ci},
+        )
+    ).one_or_none()
+
+
+async def seguimientos_cu07(sesion: AsyncSession, ci_estudiante: str, id_seguimiento: int | None = None):
+    """Anotaciones del estudiante (o solo una), la más reciente primero, con el nombre y rol de quien la registró."""
+    filtro = "AND s.id_seguimiento = :id" if id_seguimiento is not None else ""
+    return (
+        await sesion.execute(
+            text(f"""SELECT s.id_seguimiento, s.fecha_seguimiento AS fecha, s.tipo_seguimiento AS tipo, s.gravedad,
+                           s.descripcion_seguimiento AS descripcion, s.accion_tomada, s.ci_registrado_por,
+                           pa.nombre_persona || ' ' || pa.apellidos AS registrado_por,
+                           r.nombre_rol AS rol_registrado_por
+                      FROM seguimiento_estudiante s
+                      JOIN persona pa ON pa.ci = s.ci_registrado_por
+                      LEFT JOIN usuario u ON u.ci_persona = s.ci_registrado_por
+                      LEFT JOIN rol r     ON r.id_rol = u.id_rol_usuario
+                     WHERE s.ci_estudiante_seguimiento = :ci {filtro}
+                     ORDER BY s.fecha_seguimiento DESC, s.id_seguimiento DESC"""),
+            {"ci": ci_estudiante, "id": id_seguimiento},
+        )
+    ).all()
+
+
+async def hoy(sesion: AsyncSession):
+    """Fecha de hoy según la BD (la sesión usa la hora de Bolivia)."""
+    return await sesion.scalar(text("SELECT current_date"))
+
+
+# ============================================================
+# CU05 - REGISTRAR Y ACTUALIZAR DATOS DE PERSONA
+# ============================================================
+# Solo personas con CI válido: excluye registros internos del sistema (p. ej. 'PAGO-EN-LINEA').
+_CI_VALIDO_CU05 = r"^[0-9]{4,12}(-[0-9][A-Z])?$"
+
+
+async def listar_personas_cu05(sesion: AsyncSession, *, buscar: str | None, estado: str | None,
+                               pagina: int, tamano: int):
+    filtros, params = ["p.ci ~ :ci_valido"], {"ci_valido": _CI_VALIDO_CU05}
+    if buscar:
+        filtros.append("(lower(p.nombre_persona || ' ' || p.apellidos) LIKE :q "
+                       "OR lower(p.apellidos || ' ' || p.nombre_persona) LIKE :q OR p.ci LIKE :q)")
+        params["q"] = _like(buscar)
+    if estado:
+        filtros.append("p.estado_persona = :estado")
+        params["estado"] = estado
+    donde = " AND ".join(filtros)
+    total = await sesion.scalar(text(f"SELECT count(*) FROM persona p WHERE {donde}"), params)
+    filas = (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.expedido, p.nombre_persona, p.apellidos, p.sexo, p.telefono, p.email,
+                            p.estado_persona,
+                            EXISTS (SELECT 1 FROM estudiante e WHERE e.ci_estudiante = p.ci) AS es_estudiante,
+                            EXISTS (SELECT 1 FROM tutor t WHERE t.ci_tutor = p.ci) AS es_tutor,
+                            EXISTS (SELECT 1 FROM profesor pr WHERE pr.ci_profesor = p.ci) AS es_profesor,
+                            EXISTS (SELECT 1 FROM administrativo a WHERE a.ci_administrativo = p.ci)
+                                AS es_administrativo,
+                            u.nombre_usuario, u.estado_usuario
+                       FROM persona p
+                       LEFT JOIN usuario u ON u.ci_persona = p.ci
+                      WHERE {donde}
+                      ORDER BY p.apellidos, p.nombre_persona
+                      LIMIT :limite OFFSET :desde"""),
+            {**params, "limite": tamano, "desde": (pagina - 1) * tamano},
+        )
+    ).all()
+    return filas, total or 0
+
+
+async def usuario_cu05(sesion: AsyncSession, ci: str):
+    """Cuenta de usuario de la persona: solo nombre, rol y estado (nunca el hash de la contraseña)."""
+    return (
+        await sesion.execute(
+            text("""SELECT u.nombre_usuario, r.nombre_rol AS rol, u.estado_usuario
+                      FROM usuario u
+                      JOIN rol r ON r.id_rol = u.id_rol_usuario
+                     WHERE u.ci_persona = :ci"""),
+            {"ci": ci},
+        )
+    ).one_or_none()
+

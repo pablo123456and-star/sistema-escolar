@@ -263,3 +263,117 @@ class DocenteDetalleSalida(PersonaSalida):
     gestion: int | None
     asignaciones: list[AsignacionDocenteSalida]
     tiene_usuario: bool
+
+
+# ---- CU07: antecedentes médicos y seguimiento ----------------------------------------
+TipoSeguimiento = Literal["conducta", "academico", "salud", "merito", "otro"]
+Gravedad = Literal["leve", "grave", "muy_grave"]
+
+
+def _texto_largo(valor):
+    """Como _limpiar, pero conserva los saltos de línea (párrafos) de los textos largos."""
+    if isinstance(valor, str):
+        lineas = [" ".join(linea.split()) for linea in valor.strip().splitlines()]
+        valor = "\n".join(lineas).strip()
+        while "\n\n\n" in valor:
+            valor = valor.replace("\n\n\n", "\n\n")
+        return valor or None
+    return valor
+
+
+class _BaseTexto(BaseModel):
+    @field_validator("*", mode="before")
+    @classmethod
+    def _normalizar(cls, v):
+        return _texto_largo(v)
+
+
+class AntecedentesActualizar(_BaseTexto):
+    observacion_medica: str | None = Field(
+        None, max_length=1000, description="Alergias, enfermedades, medicación... (vacío = sin observaciones)"
+    )
+
+
+class SeguimientoCrear(_BaseTexto):
+    tipo: TipoSeguimiento
+    gravedad: Gravedad | None = Field(None, description="Obligatoria solo para conducta")
+    fecha: date | None = Field(None, description="Por defecto, hoy. No puede ser futura")
+    descripcion: str = Field(min_length=5, max_length=2000)
+    accion_tomada: str | None = Field(None, max_length=1000)
+
+
+class SeguimientoSalida(BaseModel):
+    id_seguimiento: int
+    fecha: date
+    tipo: TipoSeguimiento
+    gravedad: Gravedad | None
+    descripcion: str
+    accion_tomada: str | None
+    registrado_por: str
+    rol_registrado_por: str | None
+    es_mio: bool
+
+
+class EstudianteSeguimientoSalida(BaseModel):
+    """Fila de la lista de estudiantes que el usuario puede consultar en el CU07."""
+    ci: str
+    nombre_persona: str
+    apellidos: str
+    sexo: str | None
+    estado_persona: str
+    curso: str | None
+    tiene_observacion_medica: bool
+    cantidad_seguimientos: int
+    ultimo_seguimiento: date | None
+
+
+class FichaSeguimientoSalida(BaseModel):
+    ci: str
+    expedido: str | None
+    nombre_persona: str
+    apellidos: str
+    sexo: str | None
+    fecha_nacimiento: date | None
+    rude: str | None
+    estado_persona: str
+    curso: str | None
+    gestion: int | None
+    observacion_medica: str | None
+    antecedentes_academicos: str | None
+    puede_editar_antecedentes: bool
+    puede_registrar_seguimiento: bool
+    seguimientos: list[SeguimientoSalida]
+
+
+# ============================================================
+# CU05 - REGISTRAR Y ACTUALIZAR DATOS DE PERSONA
+# ============================================================
+class PersonaListaSalida(BaseModel):
+    """Fila del buscador de personas: datos básicos, roles y cuenta de usuario."""
+    ci: str
+    expedido: str | None
+    nombre_persona: str
+    apellidos: str
+    sexo: str | None
+    telefono: str | None
+    email: str | None
+    estado_persona: str
+    es_estudiante: bool
+    es_tutor: bool
+    es_profesor: bool
+    es_administrativo: bool
+    nombre_usuario: str | None
+    estado_usuario: str | None
+
+
+class UsuarioPersonaSalida(BaseModel):
+    """Cuenta de usuario de la persona (nunca la contraseña ni su hash)."""
+    nombre_usuario: str
+    rol: str
+    estado_usuario: str
+
+
+class PersonaFichaSalida(PersonaBuscadaSalida):
+    usuario: UsuarioPersonaSalida | None
+    inscripcion: InscripcionActualSalida | None
+    es_usuario_actual: bool

@@ -225,3 +225,126 @@ export const esquemaDocente = z.object({
     .refine((v) => !v || (/^\d+$/.test(v) && Number(v) <= 60), 'Número entero entre 0 y 60'),
   antecedentes_laborales: opcional(1000),
 })
+
+// ---- CU07: antecedentes médicos y seguimiento ------------------------------------
+export const TIPOS_SEGUIMIENTO = ['conducta', 'academico', 'salud', 'merito', 'otro'] as const
+export type TipoSeguimiento = (typeof TIPOS_SEGUIMIENTO)[number]
+export const ETIQUETA_TIPO: Record<TipoSeguimiento, string> = {
+  conducta: 'Conducta',
+  academico: 'Académico',
+  salud: 'Salud',
+  merito: 'Mérito',
+  otro: 'Otro',
+}
+
+export const GRAVEDADES = ['leve', 'grave', 'muy_grave'] as const
+export type Gravedad = (typeof GRAVEDADES)[number]
+export const ETIQUETA_GRAVEDAD: Record<Gravedad, string> = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy grave' }
+
+export type EstudianteSeguimiento = {
+  ci: string
+  nombre_persona: string
+  apellidos: string
+  sexo: 'M' | 'F' | null
+  estado_persona: 'activo' | 'inactivo'
+  curso: string | null
+  tiene_observacion_medica: boolean
+  cantidad_seguimientos: number
+  ultimo_seguimiento: string | null
+}
+
+export type Seguimiento = {
+  id_seguimiento: number
+  fecha: string
+  tipo: TipoSeguimiento
+  gravedad: Gravedad | null
+  descripcion: string
+  accion_tomada: string | null
+  registrado_por: string
+  rol_registrado_por: string | null
+  es_mio: boolean
+}
+
+export type FichaSeguimiento = {
+  ci: string
+  expedido: string | null
+  nombre_persona: string
+  apellidos: string
+  sexo: 'M' | 'F' | null
+  fecha_nacimiento: string | null
+  rude: string | null
+  estado_persona: 'activo' | 'inactivo'
+  curso: string | null
+  gestion: number | null
+  observacion_medica: string | null
+  antecedentes_academicos: string | null
+  puede_editar_antecedentes: boolean
+  puede_registrar_seguimiento: boolean
+  seguimientos: Seguimiento[]
+}
+
+/** Fecha de hoy (Bolivia) en formato AAAA-MM-DD, para el valor por defecto y el máximo del campo fecha. */
+export function hoyBolivia(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/La_Paz' }).format(new Date())
+}
+
+export const esquemaSeguimiento = z
+  .object({
+    tipo: z.enum(TIPOS_SEGUIMIENTO, { error: 'Elija el tipo' }),
+    gravedad: z.string(),
+    fecha: z.string().min(1, 'Indique la fecha'),
+    descripcion: z.string().trim().min(5, 'Describa lo ocurrido (mínimo 5 caracteres)').max(2000),
+    accion_tomada: z.string().trim().max(1000),
+  })
+  .superRefine((d, ctx) => {
+    if (d.tipo === 'conducta' && !d.gravedad) {
+      ctx.addIssue({ code: 'custom', path: ['gravedad'], message: 'Indique la gravedad' })
+    }
+    if (d.fecha && d.fecha > hoyBolivia()) {
+      ctx.addIssue({ code: 'custom', path: ['fecha'], message: 'La fecha no puede ser futura' })
+    }
+  })
+
+export const esquemaAntecedentes = z.object({ observacion_medica: z.string().max(1000, 'Máximo 1000 caracteres') })
+
+// ---- CU05 -------------------------------------------------------------------
+export type EstadoUsuario = 'activo' | 'inactivo' | 'bloqueado'
+
+/** Fila del buscador de personas. */
+export type PersonaFila = {
+  ci: string
+  expedido: string | null
+  nombre_persona: string
+  apellidos: string
+  sexo: 'M' | 'F' | null
+  telefono: string | null
+  email: string | null
+  estado_persona: 'activo' | 'inactivo'
+  es_estudiante: boolean
+  es_tutor: boolean
+  es_profesor: boolean
+  es_administrativo: boolean
+  nombre_usuario: string | null
+  estado_usuario: EstadoUsuario | null
+}
+
+/** Cuenta de usuario de la persona (el backend nunca envía la contraseña ni su hash). */
+export type UsuarioPersona = { nombre_usuario: string; rol: string; estado_usuario: EstadoUsuario }
+
+export type PersonaFicha = PersonaBuscada & {
+  usuario: UsuarioPersona | null
+  inscripcion: EstudianteDetalle['inscripcion']
+  es_usuario_actual: boolean
+}
+
+/** Roles de la persona en la institución, en el orden en que se muestran. */
+export function rolesPersona(p: Pick<PersonaBuscada, 'es_estudiante' | 'es_tutor' | 'es_profesor' | 'es_administrativo'>) {
+  const roles: string[] = []
+  if (p.es_estudiante) roles.push('Estudiante')
+  if (p.es_tutor) roles.push('Padre/Tutor')
+  if (p.es_profesor) roles.push('Docente')
+  if (p.es_administrativo) roles.push('Administrativo')
+  return roles
+}
+
+export const esquemaEdicionPersona = z.object({ persona: esquemaPersona })
