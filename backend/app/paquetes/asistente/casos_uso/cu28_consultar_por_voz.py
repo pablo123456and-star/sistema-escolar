@@ -95,6 +95,10 @@ Reglas:
   para ver esa información; si responde 404, que no existe. No busques otra forma de obtener ese dato.
 - Para usar una ruta con identificadores (id_curso, id_periodo, CI...), obtenlos antes con las rutas de
   opciones o de búsqueda. Si el usuario dice "mi", "mis" o "mis hijos", usa las rutas del usuario conectado.
+- Las rutas /mias y /mis-cuotas devuelven SOLO datos del usuario conectado (o de sus hijos): nunca los presentes
+  como datos de otra persona. Si preguntan por otra persona, usa las rutas de esa persona (boletín, historial...).
+- Para preguntas sobre un curso completo (quién falta más, quién tiene menos asistencia, mejor o peor promedio
+  del curso) usa los reportes fijos de asistencia o rendimiento, no el historial de cada estudiante.
 - Al hablar de notas, asistencia o boletines, di siempre a qué trimestre y gestión se refieren los datos. Si el
   usuario no indica el trimestre, usa el trimestre en curso y menciónalo (los id_periodo de la gestión
   abierta están arriba: no los consultes de nuevo).
@@ -283,9 +287,50 @@ def _preparar_planilla(datos):
                       "filas": filas}}
 
 
+def _numero(valor) -> float | None:
+    try:
+        return None if valor is None else float(valor)
+    except (TypeError, ValueError):
+        return None
+
+
+def _preparar_reporte_curso(campo: str, nombre_mas: str, nombre_menos: str):
+    """Reportes fijos de un curso (asistencia, rendimiento): agrega quién tiene el valor más alto y más bajo."""
+    def preparar(datos):
+        if not isinstance(datos, dict) or not isinstance(datos.get("filas"), list):
+            return datos
+        valores = [(v, f.get("estudiante")) for f in datos["filas"] if (v := _numero(f.get(campo))) is not None]
+        resumen = {nombre_mas: _extremo(valores, max, ("estudiante",)),
+                   nombre_menos: _extremo(valores, min, ("estudiante",)),
+                   "promedio_del_curso": _promedio([v for v, _ in valores]),
+                   "cantidad_estudiantes": len(datos["filas"]), "sin_datos": len(datos["filas"]) - len(valores),
+                   "texto": datos.get("resumen")}
+        if campo == "porcentaje":
+            resumen["menos_de_80_por_ciento"] = sum(1 for v, _ in valores if v < 80)
+        claves = [c.get("clave") for c in datos.get("columnas") or [] if c.get("clave") != "ci"]
+        return {"resumen": resumen, "reporte": datos.get("titulo"), "filtros": datos.get("filtros"),
+                "tabla": {"columnas": claves, "filas": [[_redondear(f.get(c)) for c in claves] for f in datos["filas"]]}}
+    return preparar
+
+
+def _preparar_propios(de_quien: str):
+    """Rutas del usuario conectado: se marca de quién son, para que el modelo no las atribuya a otra persona."""
+    def preparar(datos):
+        return {"pertenecen_a": de_quien,
+                "aviso": "Estos datos NO son de ninguna otra persona por la que se haya preguntado.", "datos": datos}
+    return preparar
+
+
 PREPARADORES = [
     (re.compile(r"^/evaluacion/centralizador$"), _preparar_centralizador),
     (re.compile(r"^/evaluacion/calificaciones/planilla/[^/]+$"), _preparar_planilla),
+    (re.compile(r"^/reportes/estaticos/asistencia$"),
+     _preparar_reporte_curso("porcentaje", "mayor_asistencia", "menor_asistencia")),
+    (re.compile(r"^/reportes/estaticos/rendimiento$"),
+     _preparar_reporte_curso("promedio", "mejor_promedio", "peor_promedio")),
+    (re.compile(r"^/evaluacion/calificaciones/mias$"), _preparar_propios("el usuario conectado (sus propias notas)")),
+    (re.compile(r"^/administracion/mis-cuotas$"),
+     _preparar_propios("el usuario conectado (sus propias cuotas o las de sus hijos)")),
 ]
 
 

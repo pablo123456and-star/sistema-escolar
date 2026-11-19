@@ -87,6 +87,21 @@ async def test_cu28_estudiante_consulta_sus_notas(cliente, simular):
     assert "Gestión abierta" in falso.sistema and "id_periodo" in falso.sistema
 
 
+async def test_cu28_notas_propias_marcadas(cliente, simular):
+    """/mias y /mis-cuotas llegan marcadas como del usuario conectado (el modelo no debe atribuirlas a otro)."""
+    falso = simular({"role": "assistant", "content": None,
+                     "tool_calls": [_pedido("/evaluacion/calificaciones/mias", id_="a"),
+                                    _pedido("/administracion/mis-cuotas", id_="b")]})
+    cabecera = await iniciar(cliente, "mquispe")
+    r = await cliente.post(f"{URL}/consulta", headers=cabecera, json={"pregunta": "Notas de Mariana Ticona"})
+    assert r.status_code == 200, r.text
+    for resultado in falso.resultados:
+        assert resultado["estado"] == 200
+        assert resultado["datos"]["pertenecen_a"].startswith("el usuario conectado")
+        assert "datos" in resultado["datos"]
+    assert "nunca los presentes" in falso.sistema
+
+
 async def test_cu28_estudiante_no_ve_notas_de_otro(cliente, simular):
     falso = simular({"role": "assistant", "content": None,
                      "tool_calls": [_pedido("/evaluacion/boletines/4500002", {"id_periodo": 1})]},
@@ -120,6 +135,8 @@ async def test_cu28_solo_rutas_get_del_catalogo(cliente, simular):
 
 async def test_cu28_catalogo_segun_rol():
     assert "/seguridad/bitacora" in catalogo.descripcion("administrador")
+    admin = catalogo.descripcion("administrador")
+    assert "/reportes/opciones" in admin and "clave: asistencia" in admin and "rendimiento" in admin
     for rol in ("profesor", "estudiante", "tutor"):
         texto = catalogo.descripcion(rol)
         assert "/seguridad/bitacora" not in texto and "/administracion/morosos" not in texto
@@ -255,6 +272,47 @@ async def test_cu28_resumen_del_centralizador(cliente, admin, simular):
         assert por_materia[materia]["nota_mas_baja"]["valor"] == round(baja_m, 2)
         assert {"estudiante": next(e for v, e in de_materia if v == baja_m)} in \
             por_materia[materia]["nota_mas_baja"]["quienes"]
+
+
+async def test_cu28_resumen_del_reporte_de_asistencia(cliente, admin, simular):
+    """Quién tiene menos asistencia en un curso: el servidor calcula el mínimo y el máximo del reporte fijo."""
+    opciones = (await cliente.get("/reportes/opciones", headers=admin)).json()
+    for periodo in opciones["periodos"]:
+        for curso in opciones["cursos"]:
+            params = {"id_curso": curso["id_curso"], "id_periodo": periodo["id_periodo"]}
+            crudo = (await cliente.get("/reportes/estaticos/asistencia", headers=admin, params=params)).json()
+            porcentajes = [(f["porcentaje"], f["estudiante"]) for f in crudo.get("filas", [])
+                           if f.get("porcentaje") is not None]
+            if len(porcentajes) >= 3:
+                break
+        else:
+            continue
+        break
+    else:
+        pytest.skip("La base de prueba no tiene asistencia registrada")
+    falso = simular({"role": "assistant", "content": None,
+                     "tool_calls": [_pedido("/reportes/estaticos/asistencia", params)]})
+    r = await cliente.post(f"{URL}/consulta", headers=admin, json={"pregunta": "¿Quién tiene menos asistencia?"})
+    assert r.status_code == 200, r.text
+    datos = falso.resultados[0]["datos"]
+    menor = min(v for v, _ in porcentajes)
+    assert datos["resumen"]["menor_asistencia"]["valor"] == round(menor, 2)
+    assert {"estudiante": next(e for v, e in porcentajes if v == menor)} in datos["resumen"]["menor_asistencia"]["quienes"]
+    assert datos["resumen"]["mayor_asistencia"]["valor"] == round(max(v for v, _ in porcentajes), 2)
+    assert datos["resumen"]["cantidad_estudiantes"] == len(crudo["filas"])
+    assert datos["tabla"]["columnas"][0] == "estudiante" and len(datos["tabla"]["filas"]) == len(crudo["filas"])
+
+
+def test_cu28_resumen_del_reporte_de_rendimiento():
+    preparar = cu28._preparar("/reportes/estaticos/rendimiento", {
+        "titulo": "Rendimiento por curso", "filtros": ["Curso: 1ro A"], "resumen": ["Promedio del curso: 70."],
+        "columnas": [{"clave": "ci"}, {"clave": "estudiante"}, {"clave": "promedio"}],
+        "filas": [{"ci": "1", "estudiante": "Ana", "promedio": 81.5}, {"ci": "2", "estudiante": "Luis", "promedio": 55},
+                  {"ci": "3", "estudiante": "Eva", "promedio": None}]})
+    assert preparar["resumen"]["mejor_promedio"] == {"valor": 81.5, "quienes": [{"estudiante": "Ana"}]}
+    assert preparar["resumen"]["peor_promedio"]["quienes"] == [{"estudiante": "Luis"}]
+    assert preparar["resumen"]["sin_datos"] == 1
+    assert preparar["tabla"]["columnas"] == ["estudiante", "promedio"]
 
 
 async def test_cu28_resumen_de_la_planilla(cliente, profesor, simular):

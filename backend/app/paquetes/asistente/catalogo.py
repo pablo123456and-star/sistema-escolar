@@ -48,14 +48,15 @@ CATALOGO: list[tuple[str, str, str]] = [
     ("/evaluacion/calificaciones/clases", "", "Clases del docente con sus trimestres (id_periodo) y dimensiones."),
     ("/evaluacion/calificaciones/planilla/{id_asignacion}", "id_periodo*",
      "Notas de todos los estudiantes de una clase en un trimestre (docente de esa clase o administrador)."),
-    ("/evaluacion/calificaciones/mias", "id_periodo", "Notas del estudiante conectado en un trimestre (solo estudiantes)."),
+    ("/evaluacion/calificaciones/mias", "id_periodo", "Notas PROPIAS del estudiante conectado en un trimestre (no sirve para otro estudiante)."),
     ("/evaluacion/boletines/opciones/periodos", "", "Trimestres de todas las gestiones, con su id_periodo."),
     ("/evaluacion/boletines/opciones/cursos", "", "Cursos para boletines y centralizador."),
     ("/evaluacion/boletines/opciones/estudiantes", "id_periodo*, id_curso", "Estudiantes cuyo boletín puede ver el usuario en un trimestre."),
     ("/evaluacion/boletines/{ci_estudiante}", "id_periodo*", "Boletín de un estudiante en un trimestre: notas por materia y promedio."),
     ("/evaluacion/centralizador", "id_curso*, id_periodo*", "Centralizador de notas de un curso en un trimestre."),
     # --- administración --------------------------------------------------------------------------
-    ("/administracion/mis-cuotas", "", "Cuotas del estudiante conectado o de los hijos del tutor (pagadas, pendientes, atrasadas)."),
+    ("/administracion/mis-cuotas", "", "Cuotas PROPIAS del estudiante conectado o de los hijos del tutor conectado (pagadas, pendientes, "
+                                  "atrasadas; no sirve para otras personas)."),
     ("/administracion/cuotas", "ci_estudiante*", "Estado de cuenta de un estudiante (administrador)."),
     ("/administracion/pagos/estudiantes", "buscar", "Buscar estudiantes con sus cuotas pendientes (administrador)."),
     ("/administracion/morosos", "", "Estudiantes con cuotas atrasadas (administrador)."),
@@ -69,8 +70,14 @@ CATALOGO: list[tuple[str, str, str]] = [
     # --- seguridad y reportes (administrador) ----------------------------------------------------
     ("/seguridad/usuarios", "q, estado, pagina, tamano", "Cuentas de usuario del sistema (administrador)."),
     ("/seguridad/bitacora", "desde, hasta, modulo, texto, pagina, tamano", "Bitácora de actividades (administrador)."),
+    ("/reportes/opciones", "", "Gestiones, cursos (con nombre como \"6to A - Secundaria\" e id_curso), trimestres "
+                               "(id_periodo) y materias para los reportes (administrador)."),
     ("/reportes/estaticos", "", "Catálogo de reportes fijos disponibles (administrador)."),
-    ("/reportes/estaticos/{clave}", "id_gestion, id_curso, id_periodo", "Datos de un reporte fijo (administrador)."),
+    ("/reportes/estaticos/{clave}", "id_gestion, id_curso, id_periodo",
+     "Reporte fijo de un curso completo, con resumen. clave: asistencia (id_curso*, id_periodo*: presentes, faltas, "
+     "atrasos y % de asistencia de cada estudiante; sirve para quién falta más o tiene menos asistencia), "
+     "rendimiento (id_curso*, id_periodo*: promedio y materias reprobadas de cada estudiante), "
+     "morosos (id_gestion: cuotas atrasadas) o inscritos (id_gestion, id_curso*) (administrador)."),
 ]
 
 
