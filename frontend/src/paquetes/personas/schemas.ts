@@ -306,3 +306,45 @@ export const esquemaSeguimiento = z
   })
 
 export const esquemaAntecedentes = z.object({ observacion_medica: z.string().max(1000, 'Máximo 1000 caracteres') })
+
+// ---- CU05 -------------------------------------------------------------------
+export type EstadoUsuario = 'activo' | 'inactivo' | 'bloqueado'
+
+/** Fila del buscador de personas. */
+export type PersonaFila = {
+  ci: string
+  expedido: string | null
+  nombre_persona: string
+  apellidos: string
+  sexo: 'M' | 'F' | null
+  telefono: string | null
+  email: string | null
+  estado_persona: 'activo' | 'inactivo'
+  es_estudiante: boolean
+  es_tutor: boolean
+  es_profesor: boolean
+  es_administrativo: boolean
+  nombre_usuario: string | null
+  estado_usuario: EstadoUsuario | null
+}
+
+/** Cuenta de usuario de la persona (el backend nunca envía la contraseña ni su hash). */
+export type UsuarioPersona = { nombre_usuario: string; rol: string; estado_usuario: EstadoUsuario }
+
+export type PersonaFicha = PersonaBuscada & {
+  usuario: UsuarioPersona | null
+  inscripcion: EstudianteDetalle['inscripcion']
+  es_usuario_actual: boolean
+}
+
+/** Roles de la persona en la institución, en el orden en que se muestran. */
+export function rolesPersona(p: Pick<PersonaBuscada, 'es_estudiante' | 'es_tutor' | 'es_profesor' | 'es_administrativo'>) {
+  const roles: string[] = []
+  if (p.es_estudiante) roles.push('Estudiante')
+  if (p.es_tutor) roles.push('Padre/Tutor')
+  if (p.es_profesor) roles.push('Docente')
+  if (p.es_administrativo) roles.push('Administrativo')
+  return roles
+}
+
+export const esquemaEdicionPersona = z.object({ persona: esquemaPersona })

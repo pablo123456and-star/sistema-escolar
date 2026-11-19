@@ -1,6 +1,6 @@
 /**
  * Los 6 paquetes del sistema y sus casos de uso (mismo orden que el backend).
- * Pendientes: CU05, CU09 y CU11 (personas).
+ * Pendientes: CU09 y CU11 (personas).
  */
 export type CasoUso = { codigo: string; nombre: string; ruta: string }
 export type Paquete = { paquete: string; titulo: string; casos: CasoUso[] }
@@ -20,7 +20,7 @@ export const PAQUETES: Paquete[] = [
     paquete: 'personas',
     titulo: 'Personas: estudiantes, tutores, docentes y administrativos',
     casos: [
-      { codigo: 'CU05', nombre: 'Registrar y actualizar datos de persona', ruta: '/personas/cu05' },
+      { codigo: 'CU05', nombre: 'Registrar y actualizar datos de persona', ruta: '/personas/personas' },
       { codigo: 'CU06', nombre: 'Registrar y gestionar estudiante', ruta: '/personas/estudiantes' },
       { codigo: 'CU07', nombre: 'Registrar antecedentes médicos y seguimiento del estudiante', ruta: '/personas/cu07' },
       { codigo: 'CU08', nombre: 'Registrar tutor y asociarlo a estudiante', ruta: '/personas/tutores' },

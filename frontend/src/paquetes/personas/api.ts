@@ -13,6 +13,8 @@ import type {
   FichaSeguimiento,
   OpcionesEstudiante,
   PersonaBuscada,
+  PersonaFicha,
+  PersonaFila,
   Seguimiento,
   Tutor,
   TutorDetalle,
@@ -245,6 +247,49 @@ export function useRegistrarSeguimiento() {
   return useMutation({
     mutationFn: ({ ci, cuerpo }: { ci: string; cuerpo: unknown }) =>
       api<Seguimiento>(`${P}/seguimiento/estudiantes/${ci}/seguimientos`, { metodo: 'POST', cuerpo }),
+    onSuccess: invalidar,
+  })
+}
+
+// ---- CU05 -------------------------------------------------------------------
+export function usePersonas(f: { buscar?: string; estado?: string; pagina: number; tamano: number }) {
+  return useQuery({
+    queryKey: ['personas', 'personas', f],
+    queryFn: () => api<Pagina<PersonaFila>>(`${P}/personas`, { params: f }),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function usePersona(ci: string | null) {
+  return useQuery({
+    queryKey: ['personas', 'persona', ci],
+    queryFn: () => api<PersonaFicha>(`${P}/personas/${ci}`),
+    enabled: !!ci,
+  })
+}
+
+export function useActualizarPersona() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: ({ ci, cuerpo }: { ci: string; cuerpo: unknown }) =>
+      api<PersonaFicha>(`${P}/personas/${ci}`, { metodo: 'PATCH', cuerpo }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useBajaPersona() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: ({ ci, motivo }: { ci: string; motivo: string }) =>
+      api<PersonaFicha>(`${P}/personas/${ci}/baja`, { metodo: 'POST', cuerpo: { motivo } }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useReactivarPersona() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: (ci: string) => api<PersonaFicha>(`${P}/personas/${ci}/reactivar`, { metodo: 'POST' }),
     onSuccess: invalidar,
   })
 }

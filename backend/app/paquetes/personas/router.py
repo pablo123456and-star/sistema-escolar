@@ -11,6 +11,7 @@ from app.nucleo.dependencias import Administrador, Sesion, UsuarioActual, requie
 from app.nucleo.errores import NoEncontrado
 from app.nucleo.esquemas import NumeroPagina, Pagina, TamanoPagina
 from app.paquetes.personas import repository as repo
+from app.paquetes.personas.casos_uso import cu05_registrar_actualizar_persona as cu05
 from app.paquetes.personas.casos_uso import cu06_gestionar_estudiante as cu06
 from app.paquetes.personas.casos_uso import cu07_registrar_antecedentes_seguimiento as cu07
 from app.paquetes.personas.casos_uso import cu08_registrar_asociar_tutor as cu08
@@ -21,6 +22,7 @@ from app.paquetes.personas.schemas import (
     TutorSalida, VinculoActualizar, VinculoConEstudianteEntrada, VinculoEntrada, VinculoSalida,
     DocenteActualizar, DocenteCrear, DocenteDetalleSalida, DocenteSalida,
     AntecedentesActualizar, EstudianteSeguimientoSalida, FichaSeguimientoSalida, SeguimientoCrear, SeguimientoSalida,
+    PersonaActualizar, PersonaFichaSalida, PersonaListaSalida,
 )
 
 router = APIRouter(prefix="/personas", tags=["personas"])
@@ -193,3 +195,37 @@ async def baja_docente(datos: BajaEntrada, _: Administrador, sesion: Sesion, ci:
 @router.post("/docentes/{ci}/reactivar", response_model=DocenteDetalleSalida, summary="CU10 - Reactivar")
 async def reactivar_docente(_: Administrador, sesion: Sesion, ci: CiRuta):
     return await cu10.reactivar(sesion, ci)
+
+
+# ============================================================
+# CU05 - REGISTRAR Y ACTUALIZAR DATOS DE PERSONA
+# ============================================================
+@router.get("/personas", response_model=Pagina[PersonaListaSalida],
+            summary="CU05 - Buscar personas (CI, nombre o apellido)")
+async def listar_personas(
+    _: Administrador, sesion: Sesion, buscar: str | None = None, estado: Estado | None = None,
+    pagina: NumeroPagina = 1, tamano: TamanoPagina = 10,
+):
+    return await cu05.listar(sesion, buscar, estado, pagina, tamano)
+
+
+@router.get("/personas/{ci}", response_model=PersonaFichaSalida,
+            summary="CU05 - Ficha de la persona (roles, usuario e inscripción)")
+async def obtener_persona(usuario: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu05.obtener(sesion, usuario, ci)
+
+
+@router.patch("/personas/{ci}", response_model=PersonaFichaSalida,
+              summary="CU05 - Actualizar datos de la persona (parcial; el CI no cambia)")
+async def actualizar_persona(datos: PersonaActualizar, usuario: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu05.actualizar(sesion, usuario, ci, datos)
+
+
+@router.post("/personas/{ci}/baja", response_model=PersonaFichaSalida, summary="CU05 - Dar de baja (lógica)")
+async def baja_persona(datos: BajaEntrada, usuario: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu05.dar_baja(sesion, usuario, ci, datos.motivo)
+
+
+@router.post("/personas/{ci}/reactivar", response_model=PersonaFichaSalida, summary="CU05 - Reactivar")
+async def reactivar_persona(usuario: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu05.reactivar(sesion, usuario, ci)
