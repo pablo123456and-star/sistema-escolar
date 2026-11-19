@@ -20,3 +20,4 @@ ngrok.exe
 
 # (backend/ y frontend/ tienen además su propio .gitignore: .venv, node_modules, dist…)
 *.bat
+.env

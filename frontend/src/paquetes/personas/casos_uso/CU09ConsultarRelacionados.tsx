@@ -19,12 +19,12 @@ import {
   Campo,
   EncabezadoPagina,
   FilaMensaje,
-  InsigniaEstado,
+
 } from '@/componentes/comunes'
 import { Button } from '@/componentes/ui/button'
 import { Input } from '@/componentes/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/componentes/ui/table'
-import { api, mensajeError } from '@/nucleo/api'  /*asi */
+import { api, mensajeError } from '@/nucleo/api'  
 import { documento } from '@/lib/formato'
 
 // Estructura de los datos que devuelve tu backend

@@ -166,10 +166,12 @@ async def desvincular(_: Administrador, sesion: Sesion, ci: CiRuta, ci_estudiant
 # ---- CU09: Consultar relacionados ------------------------------------------------
 @router.get("/relacionados/{ci}", summary="CU09 - Consultar tutores o estudiantes relacionados")
 async def consultar_relacionados(
-    sesion: Sesion, ci: CiRuta, tipo: Literal["tutor", "estudiante", "todos"] = "todos"
+    sesion: Sesion, 
+    ci: CiRuta, 
+    tipo: Literal["tutor", "estudiante"] = "estudiante",
+    usuario: UsuarioActual = Depends(requiere_rol("administrador", "profesor", "estudiante", "tutor"))
 ):
-    return await cu09.consultar(sesion, ci, tipo)
-
+    return await cu09.consultar(sesion, usuario, ci, tipo)
 # ---- CU10: docentes ------------------------------------------------------------------
 @router.get("/docentes", response_model=Pagina[DocenteSalida], summary="CU10 - Listar docentes")
 async def listar_docentes(

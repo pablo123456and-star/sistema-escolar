@@ -1,5 +1,6 @@
 """
 Dependencias de FastAPI reutilizables.
+backend/app/nucleo/dependencias.py
 
   - sesion_bd(): la transacción de la petición, ya identificada con el usuario
     (para la bitácora) y con la zona horaria de Bolivia.
