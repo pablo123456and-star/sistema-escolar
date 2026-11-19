@@ -3,6 +3,7 @@
  * escudo, encabezado con el nombre de la unidad educativa, avisos y el menú del usuario
  * (Mi perfil, Cerrar sesión con confirmación). El menú se filtra por rol: el
  * administrador ve los módulos de gestión; docente, estudiante y padre/tutor, sus consultas.
+ * Abajo a la derecha, el botón del asistente por voz (CU28).
  */
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
@@ -54,6 +55,7 @@ import {
 import { ETIQUETA_ROL } from '@/lib/formato'
 import { useSesion } from '@/nucleo/auth/contexto'
 import { useSolicitudesRecuperacion } from '@/paquetes/seguridad/api'
+import AsistenteVoz from '@/paquetes/asistente/componentes/AsistenteVoz'
 import DialogoPerfil from '@/paquetes/seguridad/componentes/DialogoPerfil'
 import type { Rol } from '@/paquetes/seguridad/schemas'
 
@@ -155,7 +157,7 @@ export default function LayoutPrincipal() {
   }
 
   const menuLateral = (
-    <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+    <nav className="barra-menu flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
       {items.map(({ ruta, texto, icono: Icono }) => (
         <NavLink
           key={ruta}
@@ -279,6 +281,8 @@ export default function LayoutPrincipal() {
         </main>
       </div>
 
+      {/* CU28 - Asistente por voz (todos los roles; solo si el servidor lo tiene configurado) */}
+      <AsistenteVoz />
       <DialogoPerfil abierto={perfil} onCambiar={setPerfil} />
       <Confirmar
         abierto={confirmarSalida}

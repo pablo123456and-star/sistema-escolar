@@ -39,7 +39,7 @@ Las versiones exactas de cada librería están fijadas en `backend/requirements.
 
 ## Paquetes y casos de uso
 
-El backend y el frontend se organizan igual: **6 paquetes**, cada uno con sus archivos compartidos y un archivo por caso de uso en `casos_uso/`.
+El backend y el frontend se organizan igual: **7 paquetes**, cada uno con sus archivos compartidos y un archivo por caso de uso en `casos_uso/`.
 
 **Implementado (Ciclo 1):** CU01, CU02, CU03, CU04 (seguridad), CU06 y CU08 (personas). El resto está pendiente.
 
@@ -51,6 +51,7 @@ El backend y el frontend se organizan igual: **6 paquetes**, cada uno con sus ar
 | `horarios` | CU18 Gestionar aulas · CU19 Generar horario · CU20 Consultar horarios |
 | `evaluacion` | CU21 Registrar asistencia · CU22 Historial de asistencia · CU23 Registrar calificaciones · CU24 Boletín y libreta |
 | `administracion` | CU25 Pago de mensualidad · CU26 Gestionar inventario · CU27 Comunicados y citaciones |
+| `asistente` | CU28 Consultar información por comando de voz |
 
 ## Orden para levantar todo en local
 

@@ -18,6 +18,7 @@ from app.paquetes.horarios.router import router as router_horarios
 from app.paquetes.evaluacion.router import router as router_evaluacion
 from app.paquetes.administracion.router import router as router_administracion
 from app.paquetes.reportes.router import router as router_reportes
+from app.paquetes.asistente.router import router as router_asistente
 
 PREFIJO_API = "/api/v1"
 
@@ -36,7 +37,7 @@ app = FastAPI(
     lifespan=ciclo_de_vida,
     title="Sistema de Información - Unidad Educativa",
     version="0.2.0",
-    description="API del sistema académico y administrativo (6 paquetes, 27 casos de uso). "
+    description="API del sistema académico y administrativo (7 paquetes, 28 casos de uso). "
                 "Ciclo 1 implementado: seguridad (CU01-CU04) y personas (CU06, CU08).",
 )
 
@@ -51,7 +52,7 @@ app.add_middleware(
 registrar_manejadores(app)
 
 for router in (router_seguridad, router_personas, router_academico, router_horarios, router_evaluacion, router_administracion,
-               router_reportes):
+               router_reportes, router_asistente):
     app.include_router(router, prefix=PREFIJO_API)
 
 

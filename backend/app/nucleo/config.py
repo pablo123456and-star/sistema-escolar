@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     STRIPE_MONEDA: str = "bob"
     PAGO_EN_LINEA_CI: str = "PAGO-EN-LINEA"  # "cajero" de los pagos en línea (script 10_pago_en_linea.sql)
 
+    # Asistente por voz (CU28) con Groq: vacío = asistente deshabilitado
+    GROQ_API_KEY: str = ""
+    GROQ_MODELO: str = "openai/gpt-oss-120b"           # modelo de chat con herramientas (tool calling)
+    GROQ_MODELO_VOZ: str = "whisper-large-v3-turbo"    # voz a texto
+    GROQ_URL: str = "https://api.groq.com/openai/v1"
+
     @property
     def origenes_cors(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
