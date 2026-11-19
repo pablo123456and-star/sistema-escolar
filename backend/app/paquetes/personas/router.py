@@ -16,11 +16,13 @@ from app.paquetes.personas.casos_uso import cu06_gestionar_estudiante as cu06
 from app.paquetes.personas.casos_uso import cu07_registrar_antecedentes_seguimiento as cu07
 from app.paquetes.personas.casos_uso import cu08_registrar_asociar_tutor as cu08
 from app.paquetes.personas.casos_uso import cu10_registrar_docente as cu10
+from app.paquetes.personas.casos_uso import cu11_registrar_administrativo as cu11
 from app.paquetes.personas.schemas import (
     PATRON_CI, BajaEntrada, EstudianteActualizar, EstudianteCrear, EstudianteDetalleSalida, EstudianteSalida,
     OpcionesEstudianteSalida, PersonaBuscadaSalida, PersonaSalida, TutorActualizar, TutorCrear, TutorDetalleSalida,
     TutorSalida, VinculoActualizar, VinculoConEstudianteEntrada, VinculoEntrada, VinculoSalida,
     DocenteActualizar, DocenteCrear, DocenteDetalleSalida, DocenteSalida,
+    AdministrativoActualizar, AdministrativoCrear, AdministrativoDetalleSalida, AdministrativoSalida,
     AntecedentesActualizar, EstudianteSeguimientoSalida, FichaSeguimientoSalida, SeguimientoCrear, SeguimientoSalida,
     PersonaActualizar, PersonaFichaSalida, PersonaListaSalida,
 )
@@ -195,6 +197,41 @@ async def baja_docente(datos: BajaEntrada, _: Administrador, sesion: Sesion, ci:
 @router.post("/docentes/{ci}/reactivar", response_model=DocenteDetalleSalida, summary="CU10 - Reactivar")
 async def reactivar_docente(_: Administrador, sesion: Sesion, ci: CiRuta):
     return await cu10.reactivar(sesion, ci)
+
+
+# ---- CU11: personal administrativo -------------------------------------------------
+@router.get("/administrativos", response_model=Pagina[AdministrativoSalida], summary="CU11 - Listar administrativos")
+async def listar_administrativos(
+    _: Administrador, sesion: Sesion, q: str | None = None, estado: Estado | None = None,
+    pagina: NumeroPagina = 1, tamano: TamanoPagina = 10,
+):
+    return await cu11.listar(sesion, q, estado, pagina, tamano)
+
+
+@router.get("/administrativos/{ci}", response_model=AdministrativoDetalleSalida, summary="CU11 - Ver administrativo")
+async def obtener_administrativo(_: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu11.obtener(sesion, ci)
+
+
+@router.post("/administrativos", response_model=AdministrativoDetalleSalida, status_code=status.HTTP_201_CREATED,
+             summary="CU11 - Registrar administrativo")
+async def registrar_administrativo(datos: AdministrativoCrear, _: Administrador, sesion: Sesion):
+    return await cu11.registrar(sesion, datos)
+
+
+@router.patch("/administrativos/{ci}", response_model=AdministrativoDetalleSalida, summary="CU11 - Actualizar administrativo")
+async def actualizar_administrativo(datos: AdministrativoActualizar, _: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu11.actualizar(sesion, ci, datos)
+
+
+@router.post("/administrativos/{ci}/baja", response_model=AdministrativoDetalleSalida, summary="CU11 - Dar de baja (lógica)")
+async def baja_administrativo(datos: BajaEntrada, _: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu11.dar_baja(sesion, ci, datos.motivo)
+
+
+@router.post("/administrativos/{ci}/reactivar", response_model=AdministrativoDetalleSalida, summary="CU11 - Reactivar")
+async def reactivar_administrativo(_: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu11.reactivar(sesion, ci)
 
 
 # ============================================================

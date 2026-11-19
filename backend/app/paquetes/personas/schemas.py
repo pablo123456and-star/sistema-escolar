@@ -265,6 +265,34 @@ class DocenteDetalleSalida(PersonaSalida):
     tiene_usuario: bool
 
 
+# ---- Administrativo (CU11) ------------------------------------------------------
+class AdministrativoCrear(_Base):
+    persona: PersonaEntrada
+    cargo: str | None = Field(None, max_length=50)
+
+
+class AdministrativoActualizar(_Base):
+    persona: PersonaActualizar | None = None
+    cargo: str | None = Field(None, max_length=50)
+
+
+class AdministrativoSalida(BaseModel):
+    ci: str
+    expedido: str | None
+    nombre_persona: str
+    apellidos: str
+    sexo: str | None
+    telefono: str | None
+    email: str | None
+    cargo: str | None
+    estado_persona: str
+
+
+class AdministrativoDetalleSalida(PersonaSalida):
+    cargo: str | None
+    tiene_usuario: bool
+
+
 # ---- CU07: antecedentes médicos y seguimiento ----------------------------------------
 TipoSeguimiento = Literal["conducta", "academico", "salud", "merito", "otro"]
 Gravedad = Literal["leve", "grave", "muy_grave"]

@@ -9,6 +9,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { cn } from 'cn'
 import {
   BellIcon,
+  BriefcaseIcon,
   CalendarCheckIcon,
   CalendarCogIcon,
   CalendarDaysIcon,
@@ -74,6 +75,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/personas/cu07', texto: 'Seguimiento', icono: HeartPulseIcon, roles: ['administrador'] },
   // CU10 - Registrar docente
   { ruta: '/personas/docentes', texto: 'Docentes', icono: PresentationIcon, roles: ['administrador'] },
+  // CU11 - Registrar personal administrativo
+  { ruta: '/personas/cu11', texto: 'Administrativos', icono: BriefcaseIcon, roles: ['administrador'] },
   // CU12 - Gestionar niveles educativos y cursos
   { ruta: '/academico/niveles-cursos', texto: 'Niveles y cursos', icono: LayersIcon, roles: ['administrador'] },
   // CU13 - Gestionar materias y plan de estudios

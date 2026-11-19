@@ -5,6 +5,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type Pagina } from '@/nucleo/api'
 import type {
+  Administrativo,
+  AdministrativoDetalle,
   Docente,
   DocenteDetalle,
   Estudiante,
@@ -209,6 +211,57 @@ export function useReactivarDocente() {
   const invalidar = useInvalidar()
   return useMutation({
     mutationFn: (ci: string) => api<DocenteDetalle>(`${P}/docentes/${ci}/reactivar`, { metodo: 'POST' }),
+    onSuccess: invalidar,
+  })
+}
+
+// ---- CU11 -------------------------------------------------------------------
+export function useAdministrativos(f: { q?: string; estado?: string; pagina: number; tamano: number }) {
+  return useQuery({
+    queryKey: ['personas', 'administrativos', f],
+    queryFn: () => api<Pagina<Administrativo>>(`${P}/administrativos`, { params: f }),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useAdministrativo(ci: string | null) {
+  return useQuery({
+    queryKey: ['personas', 'administrativo', ci],
+    queryFn: () => api<AdministrativoDetalle>(`${P}/administrativos/${ci}`),
+    enabled: !!ci,
+  })
+}
+
+export function useRegistrarAdministrativo() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: (cuerpo: unknown) => api<AdministrativoDetalle>(`${P}/administrativos`, { metodo: 'POST', cuerpo }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useActualizarAdministrativo() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: ({ ci, cuerpo }: { ci: string; cuerpo: unknown }) =>
+      api<AdministrativoDetalle>(`${P}/administrativos/${ci}`, { metodo: 'PATCH', cuerpo }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useBajaAdministrativo() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: ({ ci, motivo }: { ci: string; motivo: string }) =>
+      api<AdministrativoDetalle>(`${P}/administrativos/${ci}/baja`, { metodo: 'POST', cuerpo: { motivo } }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useReactivarAdministrativo() {
+  const invalidar = useInvalidar()
+  return useMutation({
+    mutationFn: (ci: string) => api<AdministrativoDetalle>(`${P}/administrativos/${ci}/reactivar`, { metodo: 'POST' }),
     onSuccess: invalidar,
   })
 }
