@@ -21,6 +21,7 @@ import {
   HeartPulseIcon,
   HistoryIcon,
   HouseIcon,
+  IdCardIcon,
   LayersIcon,
   LogOutIcon,
   MegaphoneIcon,
@@ -65,6 +66,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/seguridad/usuarios', texto: 'Usuarios', icono: UsersIcon, roles: ['administrador'] },
   { ruta: '/seguridad/roles', texto: 'Roles y permisos', icono: ShieldCheckIcon, roles: ['administrador'] },
   { ruta: '/seguridad/bitacora', texto: 'Bitácora', icono: ScrollTextIcon, roles: ['administrador'] },
+  // CU05 - Registrar y actualizar datos de persona
+  { ruta: '/personas/personas', texto: 'Personas', icono: IdCardIcon, roles: ['administrador'] },
   { ruta: '/personas/estudiantes', texto: 'Estudiantes', icono: GraduationCapIcon, roles: ['administrador'] },
   { ruta: '/personas/tutores', texto: 'Padres y tutores', icono: UsersRoundIcon, roles: ['administrador'] },
   // CU07 - Antecedentes médicos y seguimiento (el profesor y el tutor lo tienen en su bloque)

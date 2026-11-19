@@ -334,3 +334,56 @@ async def seguimientos_cu07(sesion: AsyncSession, ci_estudiante: str, id_seguimi
 async def hoy(sesion: AsyncSession):
     """Fecha de hoy según la BD (la sesión usa la hora de Bolivia)."""
     return await sesion.scalar(text("SELECT current_date"))
+
+
+# ============================================================
+# CU05 - REGISTRAR Y ACTUALIZAR DATOS DE PERSONA
+# ============================================================
+# Solo personas con CI válido: excluye registros internos del sistema (p. ej. 'PAGO-EN-LINEA').
+_CI_VALIDO_CU05 = r"^[0-9]{4,12}(-[0-9][A-Z])?$"
+
+
+async def listar_personas_cu05(sesion: AsyncSession, *, buscar: str | None, estado: str | None,
+                               pagina: int, tamano: int):
+    filtros, params = ["p.ci ~ :ci_valido"], {"ci_valido": _CI_VALIDO_CU05}
+    if buscar:
+        filtros.append("(lower(p.nombre_persona || ' ' || p.apellidos) LIKE :q "
+                       "OR lower(p.apellidos || ' ' || p.nombre_persona) LIKE :q OR p.ci LIKE :q)")
+        params["q"] = _like(buscar)
+    if estado:
+        filtros.append("p.estado_persona = :estado")
+        params["estado"] = estado
+    donde = " AND ".join(filtros)
+    total = await sesion.scalar(text(f"SELECT count(*) FROM persona p WHERE {donde}"), params)
+    filas = (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.expedido, p.nombre_persona, p.apellidos, p.sexo, p.telefono, p.email,
+                            p.estado_persona,
+                            EXISTS (SELECT 1 FROM estudiante e WHERE e.ci_estudiante = p.ci) AS es_estudiante,
+                            EXISTS (SELECT 1 FROM tutor t WHERE t.ci_tutor = p.ci) AS es_tutor,
+                            EXISTS (SELECT 1 FROM profesor pr WHERE pr.ci_profesor = p.ci) AS es_profesor,
+                            EXISTS (SELECT 1 FROM administrativo a WHERE a.ci_administrativo = p.ci)
+                                AS es_administrativo,
+                            u.nombre_usuario, u.estado_usuario
+                       FROM persona p
+                       LEFT JOIN usuario u ON u.ci_persona = p.ci
+                      WHERE {donde}
+                      ORDER BY p.apellidos, p.nombre_persona
+                      LIMIT :limite OFFSET :desde"""),
+            {**params, "limite": tamano, "desde": (pagina - 1) * tamano},
+        )
+    ).all()
+    return filas, total or 0
+
+
+async def usuario_cu05(sesion: AsyncSession, ci: str):
+    """Cuenta de usuario de la persona: solo nombre, rol y estado (nunca el hash de la contraseña)."""
+    return (
+        await sesion.execute(
+            text("""SELECT u.nombre_usuario, r.nombre_rol AS rol, u.estado_usuario
+                      FROM usuario u
+                      JOIN rol r ON r.id_rol = u.id_rol_usuario
+                     WHERE u.ci_persona = :ci"""),
+            {"ci": ci},
+        )
+    ).one_or_none()

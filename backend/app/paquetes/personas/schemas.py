@@ -343,3 +343,37 @@ class FichaSeguimientoSalida(BaseModel):
     puede_editar_antecedentes: bool
     puede_registrar_seguimiento: bool
     seguimientos: list[SeguimientoSalida]
+
+
+# ============================================================
+# CU05 - REGISTRAR Y ACTUALIZAR DATOS DE PERSONA
+# ============================================================
+class PersonaListaSalida(BaseModel):
+    """Fila del buscador de personas: datos básicos, roles y cuenta de usuario."""
+    ci: str
+    expedido: str | None
+    nombre_persona: str
+    apellidos: str
+    sexo: str | None
+    telefono: str | None
+    email: str | None
+    estado_persona: str
+    es_estudiante: bool
+    es_tutor: bool
+    es_profesor: bool
+    es_administrativo: bool
+    nombre_usuario: str | None
+    estado_usuario: str | None
+
+
+class UsuarioPersonaSalida(BaseModel):
+    """Cuenta de usuario de la persona (nunca la contraseña ni su hash)."""
+    nombre_usuario: str
+    rol: str
+    estado_usuario: str
+
+
+class PersonaFichaSalida(PersonaBuscadaSalida):
+    usuario: UsuarioPersonaSalida | None
+    inscripcion: InscripcionActualSalida | None
+    es_usuario_actual: bool
