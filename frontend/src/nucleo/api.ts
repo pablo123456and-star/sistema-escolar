@@ -1,5 +1,4 @@
 /**
- * frontend/src/nucleo/api.ts
  * Cliente HTTP hacia el backend FastAPI. Por defecto usa "/api/v1" (el proxy de Vite lo
  * reenvía al backend); con VITE_API_URL se puede apuntar a otra dirección.
  * Toda la información (incluido el login) se pide al backend: el frontend

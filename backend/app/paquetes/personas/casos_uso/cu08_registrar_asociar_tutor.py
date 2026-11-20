@@ -1,5 +1,4 @@
 """
-backend/app/paquetes/personas/casos_uso/cu08_registrar_asociar_tutor.py
 CU08 - Registrar tutor y asociarlo a estudiante
 Paquete: personas
 

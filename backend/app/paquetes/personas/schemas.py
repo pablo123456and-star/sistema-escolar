@@ -123,7 +123,28 @@ class VinculoSalida(BaseModel):
     curso_estudiante: str | None
 
 
-# ---- Estudiante (CU06) --------------------------------------------------------
+# ---- Relacionados (CU09) -------------------------------------------------------
+class RelacionadoSalida(BaseModel):
+    """Un tutor del estudiante consultado, o un estudiante del tutor consultado."""
+    ci: str
+    nombre_completo: str
+    parentesco: str
+    es_principal: bool
+    es_responsable_pago: bool
+    autorizado_recoger: bool
+    telefono: str | None  # solo de los tutores
+    curso: str | None  # solo de los estudiantes (curso actual)
+    estado: str | None  # solo de los estudiantes
+
+
+class RelacionadosSalida(BaseModel):
+    ci: str
+    nombre_completo: str
+    tipo: Literal["estudiante", "tutor"]
+    relacionados: list[RelacionadoSalida]
+
+
+# ---- Estudiante (CU06)--------------------------------------------------------
 class EstudianteCrear(_Base):
     persona: PersonaEntrada
     rude: str | None = Field(None, min_length=4, max_length=20)

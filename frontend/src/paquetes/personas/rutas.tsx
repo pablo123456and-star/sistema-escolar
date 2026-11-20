@@ -1,5 +1,4 @@
 /** Rutas del paquete personas: una por caso de uso (roles según la matriz de permisos del CU03). */
-/*frontend/src/paquetes/personas/rutas.tsx */
 import type { ReactNode } from 'react'
 import type { RouteObject } from 'react-router'
 import RutaProtegida from '@/nucleo/auth/RutaProtegida'
@@ -20,7 +19,7 @@ export const rutasPersonas: RouteObject[] = [
   { path: 'personas/estudiantes', element: soloAdministrador(<CU06GestionarEstudiante />) },
   { path: 'personas/cu07', element: para(['administrador', 'profesor', 'tutor'], <CU07RegistrarAntecedentesSeguimiento />) },
   { path: 'personas/tutores', element: soloAdministrador(<CU08RegistrarAsociarTutor />) },
-  { path: 'personas/cu09', element: <CU09ConsultarRelacionados /> },
+  { path: 'personas/cu09', element: para(['administrador', 'profesor', 'tutor', 'estudiante'], <CU09ConsultarRelacionados />) },
   { path: 'personas/docentes', element: soloAdministrador(<CU10RegistrarDocente />) },
   { path: 'personas/cu11', element: soloAdministrador(<CU11RegistrarAdministrativo />) },
 ]

@@ -1,5 +1,4 @@
 /**
- * frontend/src/paquetes/personas/casos_uso/CU08RegistrarAsociarTutor.tsx
  * CU08 - Registrar tutor y asociarlo a estudiante
  * Paquete: personas
  *
