@@ -15,6 +15,7 @@ Reglas de negocio que implementa este caso de uso (backend):
     - Consultar detalle de administrativo (datos personales, cargo y si tiene usuario en el sistema).
     - Actualización parcial de datos personales y de cargo.
     - Dar de baja (baja lógica): persona y usuario asociados inactivos.
+    - El administrador no puede darse de baja a sí mismo (perdería acceso al sistema).
     - Reactivar: vuelve a activo (y su usuario asociado).
 
 Precondición:
@@ -28,7 +29,8 @@ Estado: IMPLEMENTADO.
 """
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.nucleo.errores import Conflicto, NoEncontrado
+from app.nucleo.dependencias import UsuarioActual
+from app.nucleo.errores import Conflicto, ErrorNegocio, NoEncontrado
 from app.nucleo.esquemas import Pagina
 from app.paquetes.personas import politicas
 from app.paquetes.personas import repository as repo
@@ -83,8 +85,11 @@ async def actualizar(sesion: AsyncSession, ci: str, datos: AdministrativoActuali
     return await obtener(sesion, ci)
 
 
-async def dar_baja(sesion: AsyncSession, ci: str, motivo: str) -> AdministrativoDetalleSalida:
+async def dar_baja(sesion: AsyncSession, usuario: UsuarioActual, ci: str, motivo: str) -> AdministrativoDetalleSalida:
     await _administrativo(sesion, ci)
+    if ci == usuario.ci:
+        raise ErrorNegocio("No puede darse de baja a sí mismo: perdería el acceso al sistema. "
+                           "Pida a otro administrador que lo haga.")
     await politicas.dar_baja(sesion, ci, motivo)
     return await obtener(sesion, ci)
 

@@ -361,34 +361,38 @@ function DialogoAdministrativo({ ci, onCerrar }: { ci: string | null; onCerrar: 
           </DialogDescription>
         </DialogHeader>
 
-        <FormProvider {...form}>
-          <form onSubmit={guardar} className="space-y-4">
-            <CamposPersona edicion={edicion} />
+        {edicion && existente.isLoading ? (
+          <p className="py-6 text-center text-slate-500">Cargando...</p>
+        ) : (
+          <FormProvider {...form}>
+            <form onSubmit={guardar} className="space-y-4">
+              <CamposPersona edicion={edicion} />
 
-            <Separator />
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-900">Datos del puesto</h4>
-              <Campo
-                etiqueta="Cargo o función administrativa"
-                error={form.formState.errors.cargo?.message}
-              >
-                <Input
-                  {...form.register('cargo')}
-                  placeholder="Ej. Secretaria de Dirección, Contador, Auxiliar..."
-                />
-              </Campo>
-            </div>
+              <Separator />
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-slate-900">Datos del puesto</h4>
+                <Campo
+                  etiqueta="Cargo o función administrativa"
+                  error={form.formState.errors.cargo?.message}
+                >
+                  <Input
+                    {...form.register('cargo')}
+                    placeholder="Ej. Secretaria de Dirección, Contador, Auxiliar..."
+                  />
+                </Campo>
+              </div>
 
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={onCerrar} disabled={ocupado}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={ocupado}>
-                {ocupado ? 'Guardando...' : edicion ? 'Guardar cambios' : 'Registrar administrativo'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </FormProvider>
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={onCerrar} disabled={ocupado}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={ocupado}>
+                  {ocupado ? 'Guardando...' : edicion ? 'Guardar cambios' : 'Registrar administrativo'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </FormProvider>
+        )}
       </DialogContent>
     </Dialog>
   )

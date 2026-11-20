@@ -93,3 +93,23 @@ async def test_cu11_baja_y_reactivacion(cliente, admin):
     r_reac = await cliente.post("/personas/administrativos/8800013/reactivar", headers=admin)
     assert r_reac.status_code == 200
     assert r_reac.json()["estado_persona"] == "activo"
+
+
+async def test_cu11_no_puede_darse_de_baja_a_si_mismo(cliente, admin):
+    # La administradora conectada ('direccion') tiene CI 1000001 en los datos de prueba
+    # Registrada como administrativo para CU25
+    r_admin = await cliente.get("/personas/buscar/1000001", headers=admin)
+    if r_admin.status_code == 200:
+        if not r_admin.json()["es_administrativo"]:
+            await cliente.post(
+                "/personas/administrativos",
+                headers=admin,
+                json={"persona": {"ci": "1000001", "nombre_persona": "Juana", "apellidos": "Perez"}, "cargo": "Directora"},
+            )
+        r_baja_propia = await cliente.post(
+            "/personas/administrativos/1000001/baja",
+            headers=admin,
+            json={"motivo": "Intento de auto-baja"},
+        )
+        assert r_baja_propia.status_code == 400
+        assert "sí mismo" in r_baja_propia.json()["detalle"]

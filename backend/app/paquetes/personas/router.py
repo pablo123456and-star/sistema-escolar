@@ -225,8 +225,8 @@ async def actualizar_administrativo(datos: AdministrativoActualizar, _: Administ
 
 
 @router.post("/administrativos/{ci}/baja", response_model=AdministrativoDetalleSalida, summary="CU11 - Dar de baja (lógica)")
-async def baja_administrativo(datos: BajaEntrada, _: Administrador, sesion: Sesion, ci: CiRuta):
-    return await cu11.dar_baja(sesion, ci, datos.motivo)
+async def baja_administrativo(datos: BajaEntrada, usuario: Administrador, sesion: Sesion, ci: CiRuta):
+    return await cu11.dar_baja(sesion, usuario, ci, datos.motivo)
 
 
 @router.post("/administrativos/{ci}/reactivar", response_model=AdministrativoDetalleSalida, summary="CU11 - Reactivar")

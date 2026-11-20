@@ -1,6 +1,6 @@
 /**
  * Los 6 paquetes del sistema y sus casos de uso (mismo orden que el backend).
- * Pendientes: CU09 y CU11 (personas).
+ * Pendiente: CU09 (personas).
  */
 export type CasoUso = { codigo: string; nombre: string; ruta: string }
 export type Paquete = { paquete: string; titulo: string; casos: CasoUso[] }
