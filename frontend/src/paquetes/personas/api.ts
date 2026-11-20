@@ -17,7 +17,9 @@ import type {
   PersonaBuscada,
   PersonaFicha,
   PersonaFila,
+  Relacionados,
   Seguimiento,
+  TipoRelacionado,
   Tutor,
   TutorDetalle,
   Vinculo,
@@ -161,6 +163,16 @@ export function useDesvincular() {
     mutationFn: ({ ci_tutor, ci_estudiante }: { ci_tutor: string; ci_estudiante: string }) =>
       api<void>(`${P}/tutores/${ci_tutor}/estudiantes/${ci_estudiante}`, { metodo: 'DELETE' }),
     onSuccess: invalidar,
+  })
+}
+
+// ---- CU09 -------------------------------------------------------------------
+export function useRelacionados(ci: string | null, tipo: TipoRelacionado) {
+  return useQuery({
+    queryKey: ['personas', 'relacionados', ci, tipo],
+    queryFn: () => api<Relacionados>(`${P}/relacionados/${encodeURIComponent(ci ?? '')}`, { params: { tipo } }),
+    enabled: !!ci,
+    retry: false,
   })
 }
 

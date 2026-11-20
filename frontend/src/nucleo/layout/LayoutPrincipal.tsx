@@ -71,6 +71,8 @@ const MENU: ItemMenu[] = [
   { ruta: '/personas/personas', texto: 'Personas', icono: IdCardIcon, roles: ['administrador'] },
   { ruta: '/personas/estudiantes', texto: 'Estudiantes', icono: GraduationCapIcon, roles: ['administrador'] },
   { ruta: '/personas/tutores', texto: 'Padres y tutores', icono: UsersRoundIcon, roles: ['administrador'] },
+  // CU09 - Consultar relacionados (profesor y tutor: "Mis estudiantes"; estudiante: "Mis tutores")
+  { ruta: '/personas/cu09', texto: 'Consultar relacionados', icono: UsersRoundIcon, roles: ['administrador'] },
   // CU07 - Antecedentes médicos y seguimiento (el profesor y el tutor lo tienen en su bloque)
   { ruta: '/personas/cu07', texto: 'Seguimiento', icono: HeartPulseIcon, roles: ['administrador'] },
   // CU10 - Registrar docente
@@ -115,6 +117,7 @@ const MENU: ItemMenu[] = [
   { ruta: '/evaluacion/boletines', texto: 'Boletín', icono: FileTextIcon, roles: ['estudiante'] },
   { ruta: '/evaluacion/historial-asistencia', texto: 'Mi asistencia', icono: CalendarCheckIcon, roles: ['estudiante'] },
   { ruta: '/academico/cu17', texto: 'Mis inscripciones', icono: HistoryIcon, roles: ['estudiante'] },
+  { ruta: '/personas/cu09', texto: 'Mis tutores', icono: UsersRoundIcon, roles: ['estudiante'] },
   // Padre/Tutor
   { ruta: '/personas/cu09', texto: 'Mis estudiantes', icono: UsersRoundIcon, roles: ['tutor'] },
   { ruta: '/horarios/consulta', texto: 'Horarios', icono: CalendarDaysIcon, roles: ['tutor'] },

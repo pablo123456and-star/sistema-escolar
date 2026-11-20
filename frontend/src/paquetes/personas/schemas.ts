@@ -41,6 +41,29 @@ export type Vinculo = {
   curso_estudiante: string | null
 }
 
+// ---- CU09 -------------------------------------------------------------------
+export type TipoRelacionado = 'estudiante' | 'tutor'
+
+/** Un tutor del estudiante consultado, o un estudiante del tutor consultado. */
+export type Relacionado = {
+  ci: string
+  nombre_completo: string
+  parentesco: string
+  es_principal: boolean
+  es_responsable_pago: boolean
+  autorizado_recoger: boolean
+  telefono: string | null
+  curso: string | null
+  estado: string | null
+}
+
+export type Relacionados = {
+  ci: string
+  nombre_completo: string
+  tipo: TipoRelacionado
+  relacionados: Relacionado[]
+}
+
 // ---- CU06 -------------------------------------------------------------------
 export type Estudiante = {
   ci: string

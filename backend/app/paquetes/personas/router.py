@@ -15,6 +15,7 @@ from app.paquetes.personas.casos_uso import cu05_registrar_actualizar_persona as
 from app.paquetes.personas.casos_uso import cu06_gestionar_estudiante as cu06
 from app.paquetes.personas.casos_uso import cu07_registrar_antecedentes_seguimiento as cu07
 from app.paquetes.personas.casos_uso import cu08_registrar_asociar_tutor as cu08
+from app.paquetes.personas.casos_uso import cu09_consultar_relacionados as cu09
 from app.paquetes.personas.casos_uso import cu10_registrar_docente as cu10
 from app.paquetes.personas.casos_uso import cu11_registrar_administrativo as cu11
 from app.paquetes.personas.schemas import (
@@ -24,7 +25,7 @@ from app.paquetes.personas.schemas import (
     DocenteActualizar, DocenteCrear, DocenteDetalleSalida, DocenteSalida,
     AdministrativoActualizar, AdministrativoCrear, AdministrativoDetalleSalida, AdministrativoSalida,
     AntecedentesActualizar, EstudianteSeguimientoSalida, FichaSeguimientoSalida, SeguimientoCrear, SeguimientoSalida,
-    PersonaActualizar, PersonaFichaSalida, PersonaListaSalida,
+    PersonaActualizar, PersonaFichaSalida, PersonaListaSalida, RelacionadosSalida,
 )
 
 router = APIRouter(prefix="/personas", tags=["personas"])
@@ -33,6 +34,9 @@ CiRuta = Annotated[str, Path(pattern=PATRON_CI)]
 Estado = Literal["activo", "inactivo"]
 AdministradorOProfesor = Annotated[UsuarioActual, Depends(requiere_rol("administrador", "profesor"))]
 ConsultaSeguimiento = Annotated[UsuarioActual, Depends(requiere_rol("administrador", "profesor", "tutor"))]
+ConsultaRelacionados = Annotated[
+    UsuarioActual, Depends(requiere_rol("administrador", "profesor", "tutor", "estudiante"))
+]
 
 
 @router.get("/buscar/{ci}", response_model=PersonaBuscadaSalida,
@@ -162,6 +166,15 @@ async def actualizar_vinculo(datos: VinculoActualizar, _: Administrador, sesion:
                summary="CU08 - Desvincular estudiante")
 async def desvincular(_: Administrador, sesion: Sesion, ci: CiRuta, ci_estudiante: CiRuta):
     await cu08.desvincular(sesion, ci, ci_estudiante)
+
+
+# ---- CU09: consultar estudiantes/tutores relacionados --------------------------------
+@router.get("/relacionados/{ci}", response_model=RelacionadosSalida,
+            summary="CU09 - Tutores de un estudiante o estudiantes de un tutor")
+async def consultar_relacionados(
+    usuario: ConsultaRelacionados, sesion: Sesion, ci: CiRuta, tipo: Literal["estudiante", "tutor"] = "estudiante",
+):
+    return await cu09.consultar(sesion, usuario, ci, tipo)
 
 
 # ---- CU10: docentes ------------------------------------------------------------------
