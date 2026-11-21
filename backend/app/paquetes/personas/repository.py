@@ -208,6 +208,33 @@ async def listar_docentes(sesion: AsyncSession, *, q: str | None, estado: str | 
     return filas, total or 0
 
 
+# ---- Administrativos (CU11) --------------------------------------------------------
+async def listar_administrativos(sesion: AsyncSession, *, q: str | None, estado: str | None, pagina: int, tamano: int):
+    filtros, params = ["TRUE"], {}
+    if q:
+        filtros.append("(lower(p.nombre_persona || ' ' || p.apellidos) LIKE :q OR p.ci LIKE :q)")
+        params["q"] = _like(q)
+    if estado:
+        filtros.append("p.estado_persona = :estado")
+        params["estado"] = estado
+    base = f"""
+        FROM administrativo a
+        JOIN persona p ON p.ci = a.ci_administrativo
+        WHERE {' AND '.join(filtros)}"""
+    total = await sesion.scalar(text(f"SELECT count(*) {base}"), params)
+    filas = (
+        await sesion.execute(
+            text(f"""SELECT p.ci, p.expedido, p.nombre_persona, p.apellidos, p.sexo, p.telefono, p.email,
+                            a.cargo, p.estado_persona
+                     {base}
+                     ORDER BY p.apellidos, p.nombre_persona
+                     LIMIT :limite OFFSET :desde"""),
+            {**params, "limite": tamano, "desde": (pagina - 1) * tamano},
+        )
+    ).all()
+    return filas, total or 0
+
+
 async def asignaciones_docente(sesion: AsyncSession, ci: str, id_gestion: int):
     """Materias que dicta el docente en la gestión indicada (con curso y aula)."""
     return (
