@@ -63,6 +63,7 @@ MATRIZ_PERMISOS = [
     ("administracion", "CU25", "Registrar pago de mensualidad", (A, E, T)),
     ("administracion", "CU26", "Gestionar inventario", (A,)),
     ("administracion", "CU27", "Gestionar comunicados y citaciones", (A, P, E, T)),
+    ("asistente", "CU28", "Consultar información por comando de voz", (A, P, E, T)),
 ]
 
 

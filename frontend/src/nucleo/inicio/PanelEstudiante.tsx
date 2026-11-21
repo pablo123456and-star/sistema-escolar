@@ -3,8 +3,8 @@
  * año (CU23), próximas clases y horario (CU20), asistencia (CU22), comunicados (CU27)
  * y accesos a autoevaluación, boletín (CU24), inscripciones (CU17) y pagos (CU25).
  *
- * Datos reales: horario (CU20), asistencia (CU22) y mensualidades (CU25). Las calificaciones
- * (CU23/CU24) y los comunicados (CU27) se muestran cuando se implementen esos casos de uso.
+ * Datos reales: horario (CU20), asistencia (CU22) y mensualidades (CU25). Las calificaciones se
+ * consultan en el boletín (CU24) y los comunicados en su pantalla (CU27), con acceso desde este panel.
  */
 import {
   BookOpenIcon,
@@ -27,7 +27,6 @@ import { useHorarioInicio, useOpcionesConsulta } from '@/paquetes/horarios/api'
 import { cuotasDelPanel, porcentajeAsistencia, proximaCuota, proximasClases, resumenAsistencia } from './calculos'
 import {
   AccesoRapido,
-  AvisoPrototipo,
   Bienvenida,
   DetalleAsistencia,
   HorarioSemanal,
@@ -56,13 +55,9 @@ export default function PanelEstudiante() {
   return (
     <div className="space-y-6">
       <Bienvenida extra={historial.data?.estudiante.curso ?? cuenta?.estudiante.curso ?? undefined} />
-      <AvisoPrototipo
-        casos="CU23, CU24 y CU27"
-        texto="La asistencia, las mensualidades y el horario son tus datos reales. Las calificaciones y los comunicados aparecerán cuando se implementen CU23, CU24 y CU27."
-      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Indicador titulo="Promedio general" valor="—" detalle="Disponible con CU23" icono={TrendingUpIcon} tono="border-blue-100 bg-blue-50 text-blue-600" />
+        <Indicador titulo="Promedio general" valor="—" detalle="Ver en el boletín" icono={TrendingUpIcon} tono="border-blue-100 bg-blue-50 text-blue-600" />
         <Indicador
           titulo="Asistencia"
           valor={conAsistencia ? `${porcentajeAsistencia(asistencia)}%` : '—'}
@@ -82,7 +77,7 @@ export default function PanelEstudiante() {
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <Tarjeta titulo="Mis calificaciones" icono={NotebookPenIcon} enlace={{ texto: 'Ver boletín', ruta: '/evaluacion/boletines' }}>
-          <Pendiente texto="Tus calificaciones aparecerán aquí cuando se implemente el registro de notas (CU23)." />
+          <Pendiente texto="Consulta tus notas de cada trimestre y tu promedio en el boletín." />
         </Tarjeta>
         <Tarjeta titulo="Próximas clases" icono={CalendarClockIcon}>
           <ListaClases clases={proximasClases(horario)} detalle="docente" />
@@ -109,7 +104,7 @@ export default function PanelEstudiante() {
           )}
         </Tarjeta>
         <Tarjeta titulo="Comunicados" icono={MegaphoneIcon} enlace={{ texto: 'Ver todos', ruta: '/administracion/cu27' }}>
-          <Pendiente texto="Los comunicados aparecerán aquí cuando se implemente CU27." />
+          <Pendiente texto="Revisa tus comunicados y citaciones en «Ver todos»." />
         </Tarjeta>
       </div>
     </div>

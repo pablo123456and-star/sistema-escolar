@@ -1,1 +1,1 @@
-"""Los 6 paquetes del sistema."""
+"""Los 7 paquetes del sistema."""

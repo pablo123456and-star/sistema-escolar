@@ -30,6 +30,8 @@ type Opciones = {
   metodo?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   cuerpo?: unknown
   params?: Parametros
+  /** Cabeceras adicionales (p. ej. X-Historial del asistente, CU28). */
+  cabeceras?: Record<string, string>
 }
 
 function armarUrl(ruta: string, params?: Parametros) {
@@ -40,10 +42,15 @@ function armarUrl(ruta: string, params?: Parametros) {
   return url
 }
 
-export async function api<T>(ruta: string, { metodo = 'GET', cuerpo, params }: Opciones = {}): Promise<T> {
+export async function api<T>(
+  ruta: string,
+  { metodo = 'GET', cuerpo, params, cabeceras: extra }: Opciones = {},
+): Promise<T> {
   const token = obtenerToken()
-  const cabeceras: Record<string, string> = { Accept: 'application/json' }
-  if (cuerpo !== undefined) cabeceras['Content-Type'] = 'application/json'
+  const cabeceras: Record<string, string> = { Accept: 'application/json', ...extra }
+  // Un Blob (por ejemplo el audio del asistente, CU28) se envía tal cual, con su propio tipo.
+  const esBlob = cuerpo instanceof Blob
+  if (cuerpo !== undefined) cabeceras['Content-Type'] = esBlob ? cuerpo.type || 'application/octet-stream' : 'application/json'
   if (token) cabeceras.Authorization = `Bearer ${token}`
 
   let respuesta: Response
@@ -51,7 +58,7 @@ export async function api<T>(ruta: string, { metodo = 'GET', cuerpo, params }: O
     respuesta = await fetch(armarUrl(ruta, params), {
       method: metodo,
       headers: cabeceras,
-      body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+      body: cuerpo === undefined ? undefined : esBlob ? cuerpo : JSON.stringify(cuerpo),
     })
   } catch {
     throw new ErrorApi(0, 'No se pudo conectar con el servidor (o tuvo un error interno). Verifique que el backend esté levantado y revise su consola.')

@@ -281,7 +281,7 @@ async def test_cu03_roles_y_permisos(cliente, admin):
     r = await cliente.patch(f"/seguridad/roles/{roles[1]['id_rol']}", json={"descripcion_rol": "Docentes"}, headers=admin)
     assert r.json()["descripcion_rol"] == "Docentes"
     permisos = (await cliente.get("/seguridad/permisos", headers=admin)).json()
-    assert len(permisos) == 27
+    assert len(permisos) == 28
 
 
 async def test_cu03_asignar_rol_valida_persona(cliente, admin):

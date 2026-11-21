@@ -4,7 +4,7 @@
  * próximas clases (CU20) y comunicados/citaciones (CU27).
  *
  * Datos reales: sus estudiantes y mensualidades (CU25), asistencia (CU22) y horario (CU20).
- * Las calificaciones (CU23/CU24) y los comunicados (CU27) se muestran cuando se implementen.
+ * Las calificaciones se consultan en el boletín (CU24) y los comunicados en su pantalla (CU27).
  */
 import { useState } from 'react'
 import { cn } from 'cn'
@@ -24,7 +24,6 @@ import { useHistorialAsistencia } from '@/paquetes/evaluacion/api'
 import { useHorarioInicio, useOpcionesConsulta } from '@/paquetes/horarios/api'
 import { cuotasDelPanel, porcentajeAsistencia, proximaCuota, proximasClases, resumenAsistencia } from './calculos'
 import {
-  AvisoPrototipo,
   Bienvenida,
   DetalleAsistencia,
   Indicador,
@@ -55,10 +54,6 @@ export default function PanelTutor() {
   return (
     <div className="space-y-6">
       <Bienvenida />
-      <AvisoPrototipo
-        casos="CU23, CU24 y CU27"
-        texto="Sus estudiantes, la asistencia, las mensualidades y el horario son datos reales. Las calificaciones y los comunicados aparecerán cuando se implementen CU23, CU24 y CU27."
-      />
 
       {cuentas.isLoading ? (
         <p className="py-10 text-center text-slate-500">Cargando...</p>
@@ -95,7 +90,7 @@ export default function PanelTutor() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Indicador titulo="Promedio general" valor="—" detalle="Disponible con CU23" icono={TrendingUpIcon} tono="border-blue-100 bg-blue-50 text-blue-600" />
+            <Indicador titulo="Promedio general" valor="—" detalle="Ver en el boletín" icono={TrendingUpIcon} tono="border-blue-100 bg-blue-50 text-blue-600" />
             <Indicador
               titulo="Asistencia"
               valor={conAsistencia ? `${porcentajeAsistencia(asistencia)}%` : '—'}
@@ -110,12 +105,12 @@ export default function PanelTutor() {
               icono={WalletIcon}
               tono={cuota?.estado === 'vencida' ? 'border-rose-100 bg-rose-50 text-rose-600' : 'border-orange-100 bg-orange-50 text-orange-600'}
             />
-            <Indicador titulo="Comunicados" valor="—" detalle="Disponible con CU27" icono={MegaphoneIcon} tono="border-violet-100 bg-violet-50 text-violet-600" />
+            <Indicador titulo="Comunicados" valor="—" detalle="Ver en comunicados" icono={MegaphoneIcon} tono="border-violet-100 bg-violet-50 text-violet-600" />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <Tarjeta titulo={`Calificaciones de ${e.nombre_persona}`} icono={NotebookPenIcon} enlace={{ texto: 'Ver boletín', ruta: '/evaluacion/boletines' }}>
-              <Pendiente texto="Las calificaciones aparecerán aquí cuando se implemente el registro de notas (CU23)." />
+              <Pendiente texto="Consulte las notas de cada trimestre y el promedio en el boletín." />
             </Tarjeta>
             <Tarjeta titulo="Mensualidades" icono={WalletIcon} enlace={{ texto: 'Ver pagos', ruta: '/administracion/pagos' }}>
               {cuotas.length ? <ListaCuotas cuotas={cuotas} /> : <Pendiente texto="Todavía no hay cuotas generadas." />}
@@ -134,7 +129,7 @@ export default function PanelTutor() {
               <ListaClases clases={proximasClases(horario)} detalle="docente" />
             </Tarjeta>
             <Tarjeta titulo="Comunicados" icono={MegaphoneIcon} enlace={{ texto: 'Ver todos', ruta: '/administracion/cu27' }}>
-              <Pendiente texto="Los comunicados y citaciones aparecerán aquí cuando se implemente CU27." />
+              <Pendiente texto="Revise los comunicados y citaciones en «Ver todos»." />
             </Tarjeta>
           </div>
         </>

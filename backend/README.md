@@ -168,12 +168,12 @@ Si el grupo usa **Supabase como hosting** de la base, `DATABASE_URL` sale de Sup
 
 ## 4. Estructura del proyecto
 
-El sistema se organiza en **6 paquetes**. Cada paquete tiene sus archivos compartidos afuera y **un archivo por caso de uso** dentro de `casos_uso/`.
+El sistema se organiza en **7 paquetes**. Cada paquete tiene sus archivos compartidos afuera y **un archivo por caso de uso** dentro de `casos_uso/`.
 
 ```
 backend/
 ├── app/
-│   ├── main.py                  ← crea la API y registra los 6 paquetes
+│   ├── main.py                  ← crea la API y registra los 7 paquetes
 │   ├── nucleo/                  ← compartido por TODOS los paquetes
 │   │   ├── config.py            ← lee el .env
 │   │   ├── bd.py                ← conexión a PostgreSQL (sesión por petición, hora de Bolivia)
@@ -202,6 +202,7 @@ backend/
 | `horarios` | CU18–CU20: aulas y horarios |
 | `evaluacion` | CU21–CU24: asistencia, calificaciones, boletines |
 | `administracion` | CU25–CU27: pagos, inventario, comunicados |
+| `asistente` | CU28: consultar información por comando de voz (Groq) |
 
 **Flujo de una petición:** `router.py` → `casos_uso/cuXX_*.py` → `politicas.py` / `repository.py` → base de datos.
 
