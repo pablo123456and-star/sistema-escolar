@@ -249,6 +249,29 @@ export const esquemaDocente = z.object({
   antecedentes_laborales: opcional(1000),
 })
 
+// ---- CU11: personal administrativo -----------------------------------------------
+export type Administrativo = {
+  ci: string
+  expedido: string | null
+  nombre_persona: string
+  apellidos: string
+  sexo: 'M' | 'F' | null
+  telefono: string | null
+  email: string | null
+  cargo: string | null
+  estado_persona: 'activo' | 'inactivo'
+}
+
+export type AdministrativoDetalle = Persona & {
+  cargo: string | null
+  tiene_usuario: boolean
+}
+
+export const esquemaAdministrativo = z.object({
+  persona: esquemaPersona,
+  cargo: opcional(50),
+})
+
 // ---- CU07: antecedentes médicos y seguimiento ------------------------------------
 export const TIPOS_SEGUIMIENTO = ['conducta', 'academico', 'salud', 'merito', 'otro'] as const
 export type TipoSeguimiento = (typeof TIPOS_SEGUIMIENTO)[number]
